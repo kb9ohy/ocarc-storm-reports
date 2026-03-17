@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>OCARC Storm Reports Map</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+
+body {
+margin:0;
+font-family: Arial, Helvetica, sans-serif;
+}
+
+#navbar {
+background-color:#222;
+color:white;
+padding:12px;
+font-size:20px;
+}
+
+#map {
+height:90vh;
+width:100%;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="navbar">
+OCARC Storm Dashboard
+</div>
+
+<div id="map"></div>
+
+<script>
+
+var map = L.map('map').setView([38.55, -86.47], 9);
+
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+maxZoom: 18,
+attribution: '© OpenStreetMap'
+}).addTo(map);
+
+</script>
+
+</body>
+</html>
