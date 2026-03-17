@@ -95,12 +95,22 @@ fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/For
 });
 
 function addMarker(lat, lon, row){
+    var callsign = row["Amateur Radio Callsign"] || "Unknown";
+    var weather = row["Type of WX Event"] || "Unknown";
+
+    // Pick the most descriptive note field available
+    var notes = row["What kind of flooding was observed"] ||
+                row["Wind Damage Estimates"] ||
+                row["Hail Size"] ||
+                row["High Wind Speeds (Estimated)"] ||
+                row["You may upload photos of the damage observed"] ||
+                "";
+
+    var popupText = "<b>Callsign:</b> " + callsign +
+                    "<br><b>Weather:</b> " + weather +
+                    "<br><b>Notes:</b> " + notes;
+
     var marker = L.marker([lat, lon]).addTo(map);
-
-    var popupText = "<b>Callsign:</b> " + row["Amateur Radio Callsign"] +
-                    "<br><b>Weather:</b> " + row["Type of WX Event"] +
-                    "<br><b>Notes:</b> " + (row["Notes"] || row["Wind Damage Estimates"] || "");
-
     marker.bindPopup(popupText);
 }
 
