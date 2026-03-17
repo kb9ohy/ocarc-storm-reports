@@ -53,6 +53,29 @@ maxZoom: 18,
 attribution: '© OpenStreetMap'
 }).addTo(map);
 
+fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/Form%20Responses%201")
+.then(res => res.json())
+.then(data => {
+
+data.forEach(function(row){
+
+var location = row["Location"];
+
+if(location){
+
+var marker = L.marker([38.55,-86.47]).addTo(map);
+
+marker.bindPopup(
+"<b>Callsign:</b> " + row["Callsign"] +
+"<br><b>Weather:</b> " + row["Weather Type"]
+);
+
+}
+
+});
+
+});
+
 </script>
 
 </body>
