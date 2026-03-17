@@ -169,10 +169,46 @@ function addMarker(lat, lon, row){
                     "<br><b>Notes:</b> " + notes;
 
     // Choose icon based on weather type
-   https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/funnel.png
+var iconToUse;
+var weatherLower = weather.toLowerCase().trim();
 
-    var marker = L.marker([lat, lon], {icon: iconToUse}).addTo(map);
-    marker.bindPopup(popupText);
+switch(true){
+
+    case weatherLower.includes('tornado'):
+        iconToUse = tornadoIcon;
+        break;
+
+    case weatherLower.includes('funnel'):
+        iconToUse = funnelIcon;
+        break;
+
+    case weatherLower.includes('hail'):
+        iconToUse = hailIcon;
+        break;
+
+    case weatherLower.includes('flood'):
+        iconToUse = floodIcon;
+        break;
+
+    case weatherLower.includes('snow'):
+        iconToUse = snowIcon;
+        break;
+
+    case weatherLower.includes('wind'):
+        iconToUse = windIcon;
+        break;
+
+    case weatherLower.includes('power'):
+        iconToUse = powerIcon;
+        break;
+
+    default:
+        iconToUse = L.icon({
+            iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            iconSize:[25,41],
+            iconAnchor:[12,41],
+            popupAnchor:[1,-34]
+        });
 }
 
 </script>
