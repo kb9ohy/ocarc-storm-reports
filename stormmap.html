@@ -211,7 +211,9 @@ switch(true){
         });
 }
 
-</script>
+    var marker = L.marker([lat, lon], {icon: iconToUse}).addTo(map);
+marker.bindPopup(popupText);
+}</script>
 
 </body>
 </html>
