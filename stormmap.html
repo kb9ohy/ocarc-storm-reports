@@ -64,30 +64,37 @@ fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/For
 
         coords = coords.trim();
 
-        // CASE 1: looks like lat,lng coordinates
+        // CASE 1: coordinates
         if(coords.match(/^[-+]?[0-9]*\.?[0-9]+,\s*[-+]?[0-9]*\.?[0-9]+$/)){
 
             var parts = coords.split(",");
             var lat = parseFloat(parts[0].trim());
             var lon = parseFloat(parts[1].trim());
 
+            console.log("Coordinate marker:", coords);
             addMarker(lat, lon, row);
 
         } 
-        // CASE 2: address / city,state
+        // CASE 2: address
         else {
+            console.log("Attempting geocode for:", coords);
+
             var url = "https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(coords);
 
             fetch(url)
             .then(res => res.json())
             .then(result => {
+                console.log("Geocode result for:", coords, result);
+
                 if(result.length > 0){
                     var lat = parseFloat(result[0].lat);
                     var lon = parseFloat(result[0].lon);
                     addMarker(lat, lon, row);
+                } else {
+                    console.warn("No coordinates found for:", coords);
                 }
             })
-            .catch(err => console.error("Geocoding error:", err));
+            .catch(err => console.error("Geocoding error:", coords, err));
         }
 
     });
@@ -98,7 +105,6 @@ function addMarker(lat, lon, row){
     var callsign = row["Amateur Radio Callsign"] || "Unknown";
     var weather = row["Type of WX Event"] || "Unknown";
 
-    // Pick the most descriptive note field available
     var notes = row["What kind of flooding was observed"] ||
                 row["Wind Damage Estimates"] ||
                 row["Hail Size"] ||
