@@ -49,50 +49,60 @@ OCARC Weather Center |
 var map = L.map('map').setView([38.55, -86.47], 9);
 
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-maxZoom: 18,
-attribution: '© OpenStreetMap'
+    maxZoom: 18,
+    attribution: '© OpenStreetMap'
 }).addTo(map);
 
 fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/Form%20Responses%201")
-.then(response => response.json())
+.then(res => res.json())
 .then(data => {
 
-console.log("Sheet Data:", data);
+    data.forEach(function(row){
 
-data.forEach(function(row){
+        var coords = row["Coordinates"];
+        if(!coords) return;
 
-var coords = row["Coordinates"];
+        coords = coords.trim();
 
-if(coords){
+        // CASE 1: looks like lat,lng coordinates
+        if(coords.match(/^[-+]?[0-9]*\.?[0-9]+,\s*[-+]?[0-9]*\.?[0-9]+$/)){
 
-coords = coords.trim();
+            var parts = coords.split(",");
+            var lat = parseFloat(parts[0].trim());
+            var lon = parseFloat(parts[1].trim());
 
-var parts = coords.split(",");
+            addMarker(lat, lon, row);
 
-if(parts.length == 2){
+        } 
+        // CASE 2: address / city,state
+        else {
+            var url = "https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(coords);
 
-var lat = parseFloat(parts[0]);
-var lon = parseFloat(parts[1]);
+            fetch(url)
+            .then(res => res.json())
+            .then(result => {
+                if(result.length > 0){
+                    var lat = parseFloat(result[0].lat);
+                    var lon = parseFloat(result[0].lon);
+                    addMarker(lat, lon, row);
+                }
+            })
+            .catch(err => console.error("Geocoding error:", err));
+        }
 
-if(!isNaN(lat) && !isNaN(lon)){
-
-var marker = L.marker([lat, lon]).addTo(map);
-
-marker.bindPopup(
-"<b>Callsign:</b> " + row["Callsign"] +
-"<br><b>Weather:</b> " + row["Weather Type"]
-);
-
-}
-
-}
-
-}
+    });
 
 });
 
-})
-.catch(error => console.error("Error loading sheet:", error));
+function addMarker(lat, lon, row){
+    var marker = L.marker([lat, lon]).addTo(map);
+
+    var popupText = "<b>Callsign:</b> " + row["Amateur Radio Callsign"] +
+                    "<br><b>Weather:</b> " + row["Type of WX Event"] +
+                    "<br><b>Notes:</b> " + (row["Notes"] || row["Wind Damage Estimates"] || "");
+
+    marker.bindPopup(popupText);
+}
 
 </script>
 
