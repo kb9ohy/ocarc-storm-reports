@@ -54,33 +54,45 @@ attribution: '© OpenStreetMap'
 }).addTo(map);
 
 fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/Form%20Responses%201")
-.then(res => res.json())
+.then(response => response.json())
 .then(data => {
+
+console.log("Sheet Data:", data);
 
 data.forEach(function(row){
 
-var location = row["Coordinates"];
+var coords = row["Coordinates"];
 
-if(location){
+if(coords){
 
-var coords = location.split(",");
+coords = coords.trim();
 
-var lat = parseFloat(coords[0]);
-var lon = parseFloat(coords[1]);
+var parts = coords.split(",");
+
+if(parts.length == 2){
+
+var lat = parseFloat(parts[0]);
+var lon = parseFloat(parts[1]);
+
+if(!isNaN(lat) && !isNaN(lon)){
 
 var marker = L.marker([lat, lon]).addTo(map);
 
 marker.bindPopup(
 "<b>Callsign:</b> " + row["Callsign"] +
-"<br><b>Weather:</b> " + row["Weather Type"] +
-"<br><b>Notes:</b> " + row["Notes"]
+"<br><b>Weather:</b> " + row["Weather Type"]
 );
+
+}
+
+}
 
 }
 
 });
 
-});
+})
+.catch(error => console.error("Error loading sheet:", error));
 
 </script>
 
