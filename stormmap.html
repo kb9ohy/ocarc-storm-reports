@@ -156,11 +156,13 @@ function addMarker(lat, lon, row){
     var weather = row["Type of WX Event"] || "Unknown";
 
     var notes = row["What kind of flooding was observed"] ||
-                row["Wind Damage Estimates"] ||
-                row["Hail Size"] ||
-                row["High Wind Speeds (Estimated)"] ||
-                row["You may upload photos of the damage observed"] ||
-                "";
+            row["Electric Provider in outage area"] ||
+            row["Snow total (Inches)"] ||
+            row["Wind Damage Estimates"] ||
+            row["Hail Size"] ||
+            row["High Wind Speeds (Estimated)"] ||
+            row["You may upload photos of the damage observed"] ||
+            "";
 
     var popupText = "<b>Callsign:</b> " + callsign +
                     "<br><b>Weather:</b> " + weather +
