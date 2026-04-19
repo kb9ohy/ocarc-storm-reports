@@ -42,7 +42,7 @@
 <script>
 
 /********************
- * MAP INITIALIZATION
+ * MAP INIT
  ********************/
 var map = L.map('map').setView([38.548, -86.622], 9);
 
@@ -52,7 +52,7 @@ var baseMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 /********************
- * ICONS
+ * ICON HELPER
  ********************/
 function makeIcon(url) {
     return L.icon({
@@ -79,11 +79,33 @@ var radarLayer = L.tileLayer(
     {
         tileSize: 256,
         opacity: 0.6,
-        attribution: "Radar © RainViewer"
+        attribution: "Radar © RainViewer",
+        maxZoom: 18,
+        maxNativeZoom: 9
     }
 );
 
 radarLayer.addTo(map);
+
+/********************
+ * COUNTY OVERLAY
+ ********************/
+var countyLayer = L.geoJSON(null, {
+    style: function() {
+        return {
+            color: "#555",
+            weight: 1,
+            fillOpacity: 0.05
+        };
+    }
+});
+
+fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json")
+.then(res => res.json())
+.then(data => {
+    countyLayer.addData(data);
+    countyLayer.addTo(map);
+});
 
 /********************
  * NWS ALERTS
@@ -117,18 +139,19 @@ function loadNWS() {
         nwsLayer.clearLayers();
         nwsLayer.addData(data.features || []);
     })
-    .catch(err => console.error("NWS load error:", err));
+    .catch(err => console.error("NWS error:", err));
 }
 
 loadNWS();
 setInterval(loadNWS, 60000);
 
 /********************
- * LAYERS CONTROL
+ * LAYER CONTROL
  ********************/
 var overlayMaps = {
     "Radar": radarLayer,
-    "NWS Alerts": nwsLayer
+    "NWS Alerts": nwsLayer,
+    "Counties": countyLayer
 };
 
 L.control.layers(null, overlayMaps).addTo(map);
@@ -142,7 +165,6 @@ function addMarker(lat, lon, row) {
 
     var callsign = row["Amateur Radio Callsign"] || "Unknown";
     var weather = row["Type of WX Event"] || "Unknown";
-
     var notes = row["Notes"] || "";
 
     var location =
@@ -194,24 +216,20 @@ fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/For
         var coords = (row["Coordinates"] || "").trim();
         if (!coords) return;
 
-        // CASE 1: lat/lon
         if (/^[-+]?\d*\.?\d+,\s*[-+]?\d*\.?\d+$/.test(coords)) {
             var parts = coords.split(",");
             addMarker(parseFloat(parts[0]), parseFloat(parts[1]), row);
-        }
-
-        // CASE 2: geocode
-        else {
+        } else {
             var url = "https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(coords);
 
             fetch(url)
-                .then(res => res.json())
-                .then(result => {
-                    if (result.length > 0) {
-                        addMarker(parseFloat(result[0].lat), parseFloat(result[0].lon), row);
-                    }
-                })
-                .catch(err => console.error("Geocode error:", err));
+            .then(res => res.json())
+            .then(result => {
+                if (result.length > 0) {
+                    addMarker(parseFloat(result[0].lat), parseFloat(result[0].lon), row);
+                }
+            })
+            .catch(err => console.error("Geocode error:", err));
         }
 
     });
@@ -219,14 +237,21 @@ fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/For
 });
 
 /********************
- * PAGE REFRESH (OPTIONAL)
+ * RADAR ZOOM CONTROL
  ********************/
-setInterval(function() {
-    location.reload();
-}, 60000);
+map.on('zoomend', function () {
+    var z = map.getZoom();
+
+    if (z > 10) {
+        if (map.hasLayer(radarLayer)) map.removeLayer(radarLayer);
+    } else {
+        if (!map.hasLayer(radarLayer)) map.addLayer(radarLayer);
+    }
+});
 
 </script>
 
 </body>
 </html>
+
 
