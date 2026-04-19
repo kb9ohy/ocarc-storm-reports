@@ -1,126 +1,79 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>OCARC Storm Reports Map</title>
 
-<title>OCARC Storm Reports Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+        }
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        #navbar {
+            background-color: #222;
+            color: white;
+            padding: 12px;
+            font-size: 20px;
+        }
 
-<style>
-
-body {
-margin:0;
-font-family: Arial, Helvetica, sans-serif;
-}
-
-#navbar {
-background-color:#222;
-color:white;
-padding:12px;
-font-size:20px;
-}
-
-#map {
-height:90vh;
-width:100%;
-}
-
-</style>
-
+        #map {
+            height: 90vh;
+            width: 100%;
+        }
+    </style>
 </head>
 
 <body>
 
 <div id="navbar">
-OCARC Weather Center |
-<a href="index.html" style="color:white;">Home</a> |
-<a href="stormmap.html" style="color:white;">Storm Map</a> |
-<a href="https://kb9ohy.blogspot.com" style="color:white;">OCARC</a>
+    OCARC Weather Center |
+    <a href="index.html" style="color:white;">Home</a> |
+    <a href="stormmap.html" style="color:white;">Storm Map</a> |
+    <a href="https://kb9ohy.blogspot.com" style="color:white;">OCARC</a>
 </div>
 
 <div id="map"></div>
 
 <script>
 
-// Define custom icons
-var tornadoIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/tornado.png',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
+/********************
+ * MAP INITIALIZATION
+ ********************/
+var map = L.map('map').setView([38.2, -86.9], 7);
 
-var hailIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/hail.png',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
+var baseMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '© OpenStreetMap'
+}).addTo(map);
 
-var windIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/wind.png',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
+/********************
+ * ICONS
+ ********************/
+function makeIcon(url) {
+    return L.icon({
+        iconUrl: url,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
+    });
+}
 
-var powerIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/power.png',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
+var tornadoIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/tornado.png');
+var hailIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/hail.png');
+var windIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/wind.png');
+var powerIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/power.png');
+var floodIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/flood.png');
+var snowIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/snow.png');
+var funnelIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/funnel.png');
 
-var floodIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/flood.png',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
-
-var snowIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/snow.png',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
-
-var funnelIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/funnel.png',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
-    
-
-// Layer control
-var overlayMaps = {
-    "Radar": radarLayer,
-    "NWS Alerts": nwsLayer
-};
-
-L.control.layers(null, overlayMaps).addTo(map);
-
-// Add layers by default
-radarLayer.addTo(map);
-nwsLayer.addTo(map);;
-
-fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/Form%20Responses%201")
-.then(res => res.json())
-.then(data => {
-    
-    data.forEach(function(row){
-
-        var coords = row["Coordinates"];
-        if(!coords) return;
-
-        coords = coords.trim();
-
-        // RainViewer radar layer
+/********************
+ * RADAR LAYER
+ ********************/
 var radarLayer = L.tileLayer(
     "https://tilecache.rainviewer.com/v2/radar/latest/256/{z}/{x}/{y}/2/1_1.png",
     {
@@ -130,7 +83,11 @@ var radarLayer = L.tileLayer(
     }
 );
 
-        // NWS Alerts Layer
+radarLayer.addTo(map);
+
+/********************
+ * NWS ALERTS
+ ********************/
 var nwsLayer = L.geoJSON(null, {
     style: function(feature) {
         return {
@@ -142,140 +99,130 @@ var nwsLayer = L.geoJSON(null, {
     onEachFeature: function(feature, layer) {
         if (feature.properties) {
             layer.bindPopup(
-                "<b>" + feature.properties.event + "</b><br>" +
-                feature.properties.headline
+                "<b>" + (feature.properties.event || "Alert") + "</b><br>" +
+                (feature.properties.headline || "")
             );
         }
     }
-});
+}).addTo(map);
 
-
-// Fetch NWS alerts
 function loadNWS() {
     fetch("https://api.weather.gov/alerts/active")
-    .then(res => res.json())
-    .then(data => {
-        nwsLayer.clearLayers();
-        nwsLayer.addData(data);
-    });
+        .then(res => res.json())
+        .then(data => {
+            nwsLayer.clearLayers();
+            nwsLayer.addData(data);
+        })
+        .catch(err => console.error("NWS load error:", err));
 }
 
-// Initial load
 loadNWS();
+setInterval(loadNWS, 60000);
 
-var baseMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '© OpenStreetMap'
-}).addTo(map);        
-       
-        // CASE 1: coordinates
-        if(coords.match(/^[-+]?[0-9]*\.?[0-9]+,\s*[-+]?[0-9]*\.?[0-9]+$/)){
+/********************
+ * LAYERS CONTROL
+ ********************/
+var overlayMaps = {
+    "Radar": radarLayer,
+    "NWS Alerts": nwsLayer
+};
 
+L.control.layers(null, overlayMaps).addTo(map);
+
+/********************
+ * MARKERS
+ ********************/
+var markers = L.layerGroup().addTo(map);
+
+function addMarker(lat, lon, row) {
+
+    var callsign = row["Amateur Radio Callsign"] || "Unknown";
+    var weather = row["Type of WX Event"] || "Unknown";
+
+    var notes = row["Notes"] || "";
+
+    var location =
+        row["Coordinates"] ||
+        row["Electric Provider in outage area"] ||
+        row["Snow total (Inches)"] ||
+        row["Wind Damage Estimates"] ||
+        row["Hail Size"] ||
+        row["High Wind Speeds (Estimated)"] ||
+        "Unknown";
+
+    var popupText =
+        "<b>Callsign:</b> " + callsign +
+        "<br><b>Weather:</b> " + weather +
+        "<br><b>Location:</b> " + location +
+        "<br><b>Notes:</b> " + notes;
+
+    var iconToUse = L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34]
+    });
+
+    var w = weather.toLowerCase();
+
+    if (w.includes('tornado')) iconToUse = tornadoIcon;
+    else if (w.includes('funnel')) iconToUse = funnelIcon;
+    else if (w.includes('hail')) iconToUse = hailIcon;
+    else if (w.includes('flood')) iconToUse = floodIcon;
+    else if (w.includes('snow')) iconToUse = snowIcon;
+    else if (w.includes('wind')) iconToUse = windIcon;
+    else if (w.includes('power')) iconToUse = powerIcon;
+
+    L.marker([lat, lon], { icon: iconToUse })
+        .bindPopup(popupText)
+        .addTo(markers);
+}
+
+/********************
+ * SHEET DATA
+ ********************/
+fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/Form%20Responses%201")
+.then(res => res.json())
+.then(data => {
+
+    data.forEach(function(row) {
+
+        var coords = (row["Coordinates"] || "").trim();
+        if (!coords) return;
+
+        // CASE 1: lat/lon
+        if (/^[-+]?\d*\.?\d+,\s*[-+]?\d*\.?\d+$/.test(coords)) {
             var parts = coords.split(",");
-            var lat = parseFloat(parts[0].trim());
-            var lon = parseFloat(parts[1].trim());
+            addMarker(parseFloat(parts[0]), parseFloat(parts[1]), row);
+        }
 
-            console.log("Coordinate marker:", coords);
-            addMarker(lat, lon, row);
-
-        } 
-        // CASE 2: address
+        // CASE 2: geocode
         else {
-            console.log("Attempting geocode for:", coords);
-
             var url = "https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(coords);
 
             fetch(url)
-            .then(res => res.json())
-            .then(result => {
-                console.log("Geocode result for:", coords, result);
-
-                if(result.length > 0){
-                    var lat = parseFloat(result[0].lat);
-                    var lon = parseFloat(result[0].lon);
-                    addMarker(lat, lon, row);
-                } else {
-                    console.warn("No coordinates found for:", coords);
-                }
-            })
-            .catch(err => console.error("Geocoding error:", coords, err));
+                .then(res => res.json())
+                .then(result => {
+                    if (result.length > 0) {
+                        addMarker(parseFloat(result[0].lat), parseFloat(result[0].lon), row);
+                    }
+                })
+                .catch(err => console.error("Geocode error:", err));
         }
 
     });
 
 });
 
-function addMarker(lat, lon, row){
-    var callsign = row["Amateur Radio Callsign"] || "Unknown";
-    var weather = row["Type of WX Event"] || "Unknown";
-    var location = row["Coordinates"] ||
-               row[Object.keys(row).find(k => k.includes("GPS Location"))] ||
-               "Unknown"; ||
-            row["Electric Provider in outage area"] ||
-            row["Snow total (Inches)"] ||
-            row["Wind Damage Estimates"] ||
-            row["Hail Size"] ||
-            row["High Wind Speeds (Estimated)"] ||
-            row["You may upload photos of the damage observed"] ||
-            "";
-
-    var popupText = "<b>Callsign:</b> " + callsign +
-                "<br><b>Weather:</b> " + weather +
-                "<br><b>Location:</b> " + location +
-                "<br><b>Notes:</b> " + notes;
-
-    // Choose icon based on weather type
-var iconToUse;
-var weatherLower = weather.toLowerCase().trim();
-
-switch(true){
-
-    case weatherLower.includes('tornado'):
-        iconToUse = tornadoIcon;
-        break;
-
-    case weatherLower.includes('funnel'):
-        iconToUse = funnelIcon;
-        break;
-
-    case weatherLower.includes('hail'):
-        iconToUse = hailIcon;
-        break;
-
-    case weatherLower.includes('flood'):
-        iconToUse = floodIcon;
-        break;
-
-    case weatherLower.includes('snow'):
-        iconToUse = snowIcon;
-        break;
-
-    case weatherLower.includes('wind'):
-        iconToUse = windIcon;
-        break;
-
-    case weatherLower.includes('power'):
-        iconToUse = powerIcon;
-        break;
-
-    default:
-        iconToUse = L.icon({
-            iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-            iconSize:[25,41],
-            iconAnchor:[12,41],
-            popupAnchor:[1,-34]
-        });
-}
-
-    var marker = L.marker([lat, lon], {icon: iconToUse}).addTo(map);
-marker.bindPopup(popupText);
-    // Auto refresh every 60 seconds
-setInterval(function(){
+/********************
+ * PAGE REFRESH (OPTIONAL)
+ ********************/
+setInterval(function() {
     location.reload();
 }, 60000);
 
-// Refresh NWS alerts every 60 seconds
-setInterval(loadNWS, 60000);}</script>
+</script>
 
 </body>
 </html>
+
