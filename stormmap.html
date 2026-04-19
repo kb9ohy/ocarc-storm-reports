@@ -96,17 +96,27 @@ var funnelIcon = L.icon({
     popupAnchor: [0, -32]
 });
     
-var map = L.map('map').setView([38.55, -86.47], 9);
-
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+var baseMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
+// Layer control
+var overlayMaps = {
+    "Radar": radarLayer,
+    "NWS Alerts": nwsLayer
+};
+
+L.control.layers(null, overlayMaps).addTo(map);
+
+// Add layers by default
+radarLayer.addTo(map);
+nwsLayer.addTo(map);;
+
 fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/Form%20Responses%201")
 .then(res => res.json())
 .then(data => {
-
+    
     data.forEach(function(row){
 
         var coords = row["Coordinates"];
@@ -114,6 +124,49 @@ fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/For
 
         coords = coords.trim();
 
+        // RainViewer radar layer
+var radarLayer = L.tileLayer(
+    "https://tilecache.rainviewer.com/v2/radar/latest/256/{z}/{x}/{y}/2/1_1.png",
+    {
+        tileSize: 256,
+        opacity: 0.6,
+        attribution: "Radar © RainViewer"
+    }
+);
+
+        // NWS Alerts Layer
+var nwsLayer = L.geoJSON(null, {
+    style: function(feature) {
+        return {
+            color: "red",
+            weight: 2,
+            fillOpacity: 0.1
+        };
+    },
+    onEachFeature: function(feature, layer) {
+        if (feature.properties) {
+            layer.bindPopup(
+                "<b>" + feature.properties.event + "</b><br>" +
+                feature.properties.headline
+            );
+        }
+    }
+});
+
+// Fetch NWS alerts
+function loadNWS() {
+    fetch("https://api.weather.gov/alerts/active")
+    .then(res => res.json())
+    .then(data => {
+        nwsLayer.clearLayers();
+        nwsLayer.addData(data);
+    });
+}
+
+// Initial load
+loadNWS();
+
+        
         // CASE 1: coordinates
         if(coords.match(/^[-+]?[0-9]*\.?[0-9]+,\s*[-+]?[0-9]*\.?[0-9]+$/)){
 
@@ -215,7 +268,13 @@ switch(true){
 
     var marker = L.marker([lat, lon], {icon: iconToUse}).addTo(map);
 marker.bindPopup(popupText);
-}</script>
+    // Auto refresh every 60 seconds
+setInterval(function(){
+    location.reload();
+}, 60000);
+
+// Refresh NWS alerts every 60 seconds
+setInterval(loadNWS, 60000);}</script>
 
 </body>
 </html>
