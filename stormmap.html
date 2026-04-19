@@ -96,10 +96,6 @@ var funnelIcon = L.icon({
     popupAnchor: [0, -32]
 });
     
-var baseMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '© OpenStreetMap'
-}).addTo(map);
 
 // Layer control
 var overlayMaps = {
@@ -153,6 +149,10 @@ var nwsLayer = L.geoJSON(null, {
     }
 });
 
+var baseMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '© OpenStreetMap'
+}).addTo(map);
 // Fetch NWS alerts
 function loadNWS() {
     fetch("https://api.weather.gov/alerts/active")
