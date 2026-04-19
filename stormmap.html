@@ -203,9 +203,22 @@ fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/For
             var parts = coords.split(",");
             addMarker(parseFloat(parts[0]), parseFloat(parts[1]), row);
         } else {
-            var url = "https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(coords);
+            var url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&countrycodes=us&q=" + encodeURIComponent(coords);
+.then(result => {
+    if (result.length > 0) {
 
-            fetch(url)
+        var display = result[0];
+
+        // Prefer city/town level results over county-level ones
+        if (display.type === "administrative" && display.class === "boundary") {
+            console.warn("Skipping county-level match for:", coords);
+            return;
+        }
+
+        addMarker(parseFloat(display.lat), parseFloat(display.lon), row);
+    }
+})
+    fetch(url)
             .then(res => res.json())
             .then(result => {
                 if (result.length > 0) {
