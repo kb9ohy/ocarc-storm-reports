@@ -107,13 +107,17 @@ var nwsLayer = L.geoJSON(null, {
 }).addTo(map);
 
 function loadNWS() {
-    fetch("https://api.weather.gov/alerts/active")
-        .then(res => res.json())
-        .then(data => {
-            nwsLayer.clearLayers();
-            nwsLayer.addData(data);
-        })
-        .catch(err => console.error("NWS load error:", err));
+    fetch("https://api.weather.gov/alerts/active", {
+        headers: {
+            "Accept": "application/geo+json"
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        nwsLayer.clearLayers();
+        nwsLayer.addData(data.features || []);
+    })
+    .catch(err => console.error("NWS load error:", err));
 }
 
 loadNWS();
