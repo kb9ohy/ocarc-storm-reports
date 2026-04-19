@@ -52,42 +52,6 @@ var baseMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 /********************
- * ICON HELPER
- ********************/
-function makeIcon(url) {
-    return L.icon({
-        iconUrl: url,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32]
-    });
-}
-
-var tornadoIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/tornado.png');
-var hailIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/hail.png');
-var windIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/wind.png');
-var powerIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/power.png');
-var floodIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/flood.png');
-var snowIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/snow.png');
-var funnelIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/funnel.png');
-
-/********************
- * RADAR LAYER
- ********************/
-var radarLayer = L.tileLayer(
-    "https://tilecache.rainviewer.com/v2/radar/latest/256/{z}/{x}/{y}/2/1_1.png",
-    {
-        tileSize: 256,
-        opacity: 0.6,
-        attribution: "Radar © RainViewer",
-        maxZoom: 18,
-        maxNativeZoom: 9
-    }
-);
-
-radarLayer.addTo(map);
-
-/********************
  * COUNTY OVERLAY
  ********************/
 var countyLayer = L.geoJSON(null, {
@@ -106,6 +70,26 @@ fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties
     countyLayer.addData(data);
     countyLayer.addTo(map);
 });
+
+/********************
+ * ICONS
+ ********************/
+function makeIcon(url) {
+    return L.icon({
+        iconUrl: url,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
+    });
+}
+
+var tornadoIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/tornado.png');
+var hailIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/hail.png');
+var windIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/wind.png');
+var powerIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/power.png');
+var floodIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/flood.png');
+var snowIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/snow.png');
+var funnelIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/funnel.png');
 
 /********************
  * NWS ALERTS
@@ -146,10 +130,9 @@ loadNWS();
 setInterval(loadNWS, 60000);
 
 /********************
- * LAYER CONTROL
+ * LAYERS CONTROL
  ********************/
 var overlayMaps = {
-    "Radar": radarLayer,
     "NWS Alerts": nwsLayer,
     "Counties": countyLayer
 };
@@ -234,19 +217,6 @@ fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/For
 
     });
 
-});
-
-/********************
- * RADAR ZOOM CONTROL
- ********************/
-map.on('zoomend', function () {
-    var z = map.getZoom();
-
-    if (z > 10) {
-        if (map.hasLayer(radarLayer)) map.removeLayer(radarLayer);
-    } else {
-        if (!map.hasLayer(radarLayer)) map.addLayer(radarLayer);
-    }
 });
 
 </script>
