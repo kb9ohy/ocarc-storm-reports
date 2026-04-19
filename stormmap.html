@@ -149,10 +149,7 @@ var nwsLayer = L.geoJSON(null, {
     }
 });
 
-var baseMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '© OpenStreetMap'
-}).addTo(map);
+
 // Fetch NWS alerts
 function loadNWS() {
     fetch("https://api.weather.gov/alerts/active")
@@ -166,7 +163,11 @@ function loadNWS() {
 // Initial load
 loadNWS();
 
-        
+var baseMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '© OpenStreetMap'
+}).addTo(map);        
+       
         // CASE 1: coordinates
         if(coords.match(/^[-+]?[0-9]*\.?[0-9]+,\s*[-+]?[0-9]*\.?[0-9]+$/)){
 
