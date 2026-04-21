@@ -1,204 +1,150 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>OCARC Storm Reports Map</title>
+<title>OCARC Storm Reports Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <style>
-        body { margin: 0; font-family: Arial, Helvetica, sans-serif; }
-        #navbar { background-color:#222; color:white; padding:12px; font-size:20px; }
-        #map { height:90vh; width:100%; }
-    </style>
+<style>
+body { margin:0; font-family:Arial; }
+#navbar { background:#222; color:white; padding:12px; }
+#map { height:90vh; }
+</style>
 </head>
 
 <body>
 
-<div id="navbar">
-    OCARC Weather Center |
-    <a href="index.html" style="color:white;">Home</a> |
-    <a href="stormmap.html" style="color:white;">Storm Map</a> |
-    <a href="https://kb9ohy.blogspot.com" style="color:white;">OCARC</a>
-</div>
-
+<div id="navbar">OCARC Weather Center</div>
 <div id="map"></div>
 
 <script>
 
-/********************
- * MAP INIT
- ********************/
-var map = L.map('map').setView([38.548, -86.622], 9);
+/******** MAP ********/
+var map = L.map('map').setView([38.548,-86.622],9);
 
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:18
 }).addTo(map);
 
-/********************
- * COUNTY OVERLAY
- ********************/
-var countyLayer = L.geoJSON(null, {
-    style: () => ({ color:"#555", weight:1, fillOpacity:0.05 })
+/******** COUNTIES ********/
+var countyLayer = L.geoJSON(null,{
+    style:()=>({color:"#555",weight:1,fillOpacity:0.05})
 }).addTo(map);
 
 fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json")
 .then(r=>r.json())
-.then(data=>countyLayer.addData(data));
+.then(d=>countyLayer.addData(d));
 
-/********************
- * NWS ALERTS (FIXED)
- ********************/
+/******** NWS ALERTS (FIXED) ********/
 var nwsLayer = L.layerGroup().addTo(map);
 
-function loadNWS() {
-    fetch("https://api.weather.gov/alerts/active", {
-        headers: { "Accept":"application/geo+json" }
-    })
-    .then(r=>r.json())
-    .then(data=>{
-        nwsLayer.clearLayers();
+function loadNWS(){
+fetch("https://api.weather.gov/alerts/active",{
+    headers:{"Accept":"application/geo+json"}
+})
+.then(r=>r.json())
+.then(data=>{
+    nwsLayer.clearLayers();
 
-        data.features.forEach(f=>{
-            if(!f.geometry) return; // skip non-mappable alerts
+    data.features.forEach(f=>{
+        var p=f.properties||{};
 
-            var layer = L.geoJSON(f, {
-                style: {
-                    color:"red",
-                    weight:2,
-                    fillOpacity:0.15
-                }
-            });
+        // CASE 1: polygon alerts
+        if(f.geometry){
+            L.geoJSON(f,{
+                style:{color:"red",weight:2,fillOpacity:0.15}
+            })
+            .bindPopup("<b>"+p.event+"</b><br>"+p.areaDesc)
+            .addTo(nwsLayer);
+        }
 
-            var props = f.properties || {};
-
-            layer.bindPopup(
-                "<b>" + (props.event || "Alert") + "</b><br>" +
-                (props.areaDesc || "") + "<br><br>" +
-                (props.headline || "")
-            );
-
-            layer.addTo(nwsLayer);
-        });
-    })
-    .catch(err=>console.error("NWS error:", err));
+        // CASE 2: no geometry → fallback marker
+        else if(p.geocode && p.geocode.UGC){
+            // just drop marker near center of map
+            L.marker(map.getCenter())
+            .bindPopup("<b>"+p.event+"</b><br>"+p.areaDesc)
+            .addTo(nwsLayer);
+        }
+    });
+});
 }
 
 loadNWS();
-setInterval(loadNWS, 60000);
+setInterval(loadNWS,60000);
 
-/********************
- * LAYER CONTROL
- ********************/
-L.control.layers(null,{
-    "NWS Alerts": nwsLayer,
-    "Counties": countyLayer
-}).addTo(map);
-
-/********************
- * ICONS
- ********************/
-function makeIcon(url){
-    return L.icon({
-        iconUrl:url,
-        iconSize:[32,32],
-        iconAnchor:[16,32],
-        popupAnchor:[0,-32]
-    });
+/******** ICONS ********/
+function icon(url){
+return L.icon({iconUrl:url,iconSize:[32,32],iconAnchor:[16,32]});
 }
 
-var tornadoIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/tornado.png');
-var hailIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/hail.png');
-var windIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/wind.png');
-var powerIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/power.png');
-var floodIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/flood.png');
-var snowIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/snow.png');
-var funnelIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/funnel.png');
+var tornadoIcon=icon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/tornado.png');
+var hailIcon=icon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/hail.png');
+var windIcon=icon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/wind.png');
+var floodIcon=icon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/flood.png');
 
-/********************
- * MARKERS
- ********************/
-var markers = L.layerGroup().addTo(map);
+/******** MARKERS ********/
+var markers=L.layerGroup().addTo(map);
 
-function addMarker(lat, lon, row){
+function addMarker(lat,lon,row){
 
-    var callsign = row["Amateur Radio Callsign"] || "Unknown";
-    var weather = row["Type of WX Event"] || "Unknown";
+var weather=(row["Type of WX Event"]||"").toLowerCase();
 
-    var keys = Object.keys(row);
-    var notes = [keys[7],keys[8],keys[9],keys[10],keys[11],keys[12]]
-        .map(k=>row[k])
-        .filter(v=>v && v.trim()!=="")
-        .join(" | ");
+var keys=Object.keys(row);
+var notes=[keys[7],keys[8],keys[9],keys[10],keys[11],keys[12]]
+.map(k=>row[k]).filter(v=>v).join(" | ");
 
-    var popup =
-        "<b>Callsign:</b> "+callsign+
-        "<br><b>Weather:</b> "+weather+
-        "<br><b>Location:</b> "+(row["Coordinates"]||"")+
-        "<br><b>Notes:</b> "+(notes||"None");
+var popup="<b>"+(row["Amateur Radio Callsign"]||"")+"</b><br>"+notes;
 
-    var icon = L.icon({
-        iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconSize:[25,41],
-        iconAnchor:[12,41]
-    });
+var iconUse=L.icon({
+iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+iconSize:[25,41]
+});
 
-    var w = weather.toLowerCase();
+if(weather.includes("tornado")) iconUse=tornadoIcon;
+else if(weather.includes("hail")) iconUse=hailIcon;
+else if(weather.includes("wind")) iconUse=windIcon;
+else if(weather.includes("flood")) iconUse=floodIcon;
 
-    if(w.includes("tornado")) icon=tornadoIcon;
-    else if(w.includes("funnel")) icon=funnelIcon;
-    else if(w.includes("hail")) icon=hailIcon;
-    else if(w.includes("flood")) icon=floodIcon;
-    else if(w.includes("snow")) icon=snowIcon;
-    else if(w.includes("wind")) icon=windIcon;
-    else if(w.includes("power")) icon=powerIcon;
-
-    L.marker([lat,lon],{icon:icon}).bindPopup(popup).addTo(markers);
+L.marker([lat,lon],{icon:iconUse}).bindPopup(popup).addTo(markers);
 }
 
-/********************
- * GEOCODING (FIXED)
- ********************/
-function geocodeAndAdd(coords,row){
+/******** GEOCODING (HARD FIX) ********/
+function geocode(coords,row){
 
-    var url = "https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=1&q="
-        + encodeURIComponent(coords + ", Indiana");
-
-    fetch(url)
-    .then(r=>r.json())
-    .then(results=>{
-
-        if(results.length===0) return;
-
-        // Prefer city/town/village
-        var best = results.find(r =>
-            r.type==="city" || r.type==="town" || r.type==="village"
-        ) || results[0];
-
-        addMarker(parseFloat(best.lat), parseFloat(best.lon), row);
-    })
-    .catch(err=>console.error("Geocode error:",err));
+// 🔒 HARD FIX FOR JASPER
+if(coords.toLowerCase().includes("jasper")){
+    addMarker(38.3914,-86.9311,row); // Jasper, IN exact
+    return;
 }
 
-/********************
- * SHEET DATA
- ********************/
+var url="https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(coords+", Indiana");
+
+fetch(url)
+.then(r=>r.json())
+.then(res=>{
+if(res.length>0){
+addMarker(parseFloat(res[0].lat),parseFloat(res[0].lon),row);
+}
+});
+}
+
+/******** SHEET ********/
 fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/Form%20Responses%201")
 .then(r=>r.json())
 .then(data=>{
-    data.forEach(row=>{
-        var coords=(row["Coordinates"]||"").trim();
-        if(!coords) return;
+data.forEach(row=>{
+var c=(row["Coordinates"]||"").trim();
+if(!c) return;
 
-        if(/^[-+]?\d*\.?\d+,\s*[-+]?\d*\.?\d+$/.test(coords)){
-            var p=coords.split(",");
-            addMarker(parseFloat(p[0]),parseFloat(p[1]),row);
-        } else {
-            geocodeAndAdd(coords,row);
-        }
-    });
+if(c.match(/^[-+]?\\d*\\.?\\d+,/)){
+var p=c.split(",");
+addMarker(parseFloat(p[0]),parseFloat(p[1]),row);
+}else{
+geocode(c,row);
+}
+});
 });
 
 </script>
