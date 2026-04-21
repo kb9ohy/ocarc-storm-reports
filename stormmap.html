@@ -9,22 +9,9 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, Helvetica, sans-serif;
-        }
-
-        #navbar {
-            background-color: #222;
-            color: white;
-            padding: 12px;
-            font-size: 20px;
-        }
-
-        #map {
-            height: 90vh;
-            width: 100%;
-        }
+        body { margin: 0; font-family: Arial, Helvetica, sans-serif; }
+        #navbar { background-color:#222; color:white; padding:12px; font-size:20px; }
+        #map { height:90vh; width:100%; }
     </style>
 </head>
 
@@ -47,62 +34,56 @@
 var map = L.map('map').setView([38.548, -86.622], 9);
 
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '© OpenStreetMap'
+    maxZoom: 18
 }).addTo(map);
 
 /********************
  * COUNTY OVERLAY
  ********************/
 var countyLayer = L.geoJSON(null, {
-    style: function() {
-        return {
-            color: "#555",
-            weight: 1,
-            fillOpacity: 0.05
-        };
-    }
+    style: () => ({ color:"#555", weight:1, fillOpacity:0.05 })
 }).addTo(map);
 
 fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json")
-.then(res => res.json())
-.then(data => {
-    countyLayer.addData(data);
-});
+.then(r=>r.json())
+.then(data=>countyLayer.addData(data));
 
 /********************
- * NWS ALERTS
+ * NWS ALERTS (FIXED)
  ********************/
-var nwsLayer = L.geoJSON(null, {
-    style: function() {
-        return {
-            color: "red",
-            weight: 2,
-            fillOpacity: 0.1
-        };
-    },
-    onEachFeature: function(feature, layer) {
-        if (feature.properties) {
-            layer.bindPopup(
-                "<b>" + (feature.properties.event || "Alert") + "</b><br>" +
-                (feature.properties.headline || "")
-            );
-        }
-    }
-}).addTo(map);
+var nwsLayer = L.layerGroup().addTo(map);
 
 function loadNWS() {
     fetch("https://api.weather.gov/alerts/active", {
-        headers: {
-            "Accept": "application/geo+json"
-        }
+        headers: { "Accept":"application/geo+json" }
     })
-    .then(res => res.json())
-    .then(data => {
+    .then(r=>r.json())
+    .then(data=>{
         nwsLayer.clearLayers();
-        nwsLayer.addData(data.features || []);
+
+        data.features.forEach(f=>{
+            if(!f.geometry) return; // skip non-mappable alerts
+
+            var layer = L.geoJSON(f, {
+                style: {
+                    color:"red",
+                    weight:2,
+                    fillOpacity:0.15
+                }
+            });
+
+            var props = f.properties || {};
+
+            layer.bindPopup(
+                "<b>" + (props.event || "Alert") + "</b><br>" +
+                (props.areaDesc || "") + "<br><br>" +
+                (props.headline || "")
+            );
+
+            layer.addTo(nwsLayer);
+        });
     })
-    .catch(err => console.error("NWS error:", err));
+    .catch(err=>console.error("NWS error:", err));
 }
 
 loadNWS();
@@ -111,7 +92,7 @@ setInterval(loadNWS, 60000);
 /********************
  * LAYER CONTROL
  ********************/
-L.control.layers(null, {
+L.control.layers(null,{
     "NWS Alerts": nwsLayer,
     "Counties": countyLayer
 }).addTo(map);
@@ -119,12 +100,12 @@ L.control.layers(null, {
 /********************
  * ICONS
  ********************/
-function makeIcon(url) {
+function makeIcon(url){
     return L.icon({
-        iconUrl: url,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32]
+        iconUrl:url,
+        iconSize:[32,32],
+        iconAnchor:[16,32],
+        popupAnchor:[0,-32]
     });
 }
 
@@ -141,88 +122,83 @@ var funnelIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-
  ********************/
 var markers = L.layerGroup().addTo(map);
 
-function addMarker(lat, lon, row) {
+function addMarker(lat, lon, row){
 
     var callsign = row["Amateur Radio Callsign"] || "Unknown";
     var weather = row["Type of WX Event"] || "Unknown";
 
-    // Combine columns H–M safely
     var keys = Object.keys(row);
-    var notes = [
-        row[keys[7]],
-        row[keys[8]],
-        row[keys[9]],
-        row[keys[10]],
-        row[keys[11]],
-        row[keys[12]]
-    ].filter(v => v && v.trim() !== "").join(" | ");
+    var notes = [keys[7],keys[8],keys[9],keys[10],keys[11],keys[12]]
+        .map(k=>row[k])
+        .filter(v=>v && v.trim()!=="")
+        .join(" | ");
 
-    var location = row["Coordinates"] || "Unknown";
+    var popup =
+        "<b>Callsign:</b> "+callsign+
+        "<br><b>Weather:</b> "+weather+
+        "<br><b>Location:</b> "+(row["Coordinates"]||"")+
+        "<br><b>Notes:</b> "+(notes||"None");
 
-    var popupText =
-        "<b>Callsign:</b> " + callsign +
-        "<br><b>Weather:</b> " + weather +
-        "<br><b>Location:</b> " + location +
-        "<br><b>Notes:</b> " + (notes || "None");
-
-    var iconToUse = L.icon({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34]
+    var icon = L.icon({
+        iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconSize:[25,41],
+        iconAnchor:[12,41]
     });
 
     var w = weather.toLowerCase();
 
-    if (w.includes('tornado')) iconToUse = tornadoIcon;
-    else if (w.includes('funnel')) iconToUse = funnelIcon;
-    else if (w.includes('hail')) iconToUse = hailIcon;
-    else if (w.includes('flood')) iconToUse = floodIcon;
-    else if (w.includes('snow')) iconToUse = snowIcon;
-    else if (w.includes('wind')) iconToUse = windIcon;
-    else if (w.includes('power')) iconToUse = powerIcon;
+    if(w.includes("tornado")) icon=tornadoIcon;
+    else if(w.includes("funnel")) icon=funnelIcon;
+    else if(w.includes("hail")) icon=hailIcon;
+    else if(w.includes("flood")) icon=floodIcon;
+    else if(w.includes("snow")) icon=snowIcon;
+    else if(w.includes("wind")) icon=windIcon;
+    else if(w.includes("power")) icon=powerIcon;
 
-    L.marker([lat, lon], { icon: iconToUse })
-        .bindPopup(popupText)
-        .addTo(markers);
+    L.marker([lat,lon],{icon:icon}).bindPopup(popup).addTo(markers);
+}
+
+/********************
+ * GEOCODING (FIXED)
+ ********************/
+function geocodeAndAdd(coords,row){
+
+    var url = "https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=1&q="
+        + encodeURIComponent(coords + ", Indiana");
+
+    fetch(url)
+    .then(r=>r.json())
+    .then(results=>{
+
+        if(results.length===0) return;
+
+        // Prefer city/town/village
+        var best = results.find(r =>
+            r.type==="city" || r.type==="town" || r.type==="village"
+        ) || results[0];
+
+        addMarker(parseFloat(best.lat), parseFloat(best.lon), row);
+    })
+    .catch(err=>console.error("Geocode error:",err));
 }
 
 /********************
  * SHEET DATA
  ********************/
 fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/Form%20Responses%201")
-.then(res => res.json())
-.then(data => {
+.then(r=>r.json())
+.then(data=>{
+    data.forEach(row=>{
+        var coords=(row["Coordinates"]||"").trim();
+        if(!coords) return;
 
-    data.forEach(function(row) {
-
-        var coords = (row["Coordinates"] || "").trim();
-        if (!coords) return;
-
-        // CASE 1: Lat/Lon
-        if (/^[-+]?\d*\.?\d+,\s*[-+]?\d*\.?\d+$/.test(coords)) {
-            var parts = coords.split(",");
-            addMarker(parseFloat(parts[0]), parseFloat(parts[1]), row);
+        if(/^[-+]?\d*\.?\d+,\s*[-+]?\d*\.?\d+$/.test(coords)){
+            var p=coords.split(",");
+            addMarker(parseFloat(p[0]),parseFloat(p[1]),row);
+        } else {
+            geocodeAndAdd(coords,row);
         }
-
-        // CASE 2: Address (force Indiana context to fix Jasper issue)
-        else {
-            var query = coords + ", Indiana";
-
-            var url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(query);
-
-            fetch(url)
-            .then(res => res.json())
-            .then(result => {
-                if (result.length > 0) {
-                    addMarker(parseFloat(result[0].lat), parseFloat(result[0].lon), row);
-                }
-            })
-            .catch(err => console.error("Geocode error:", err));
-        }
-
     });
-
 });
 
 </script>
