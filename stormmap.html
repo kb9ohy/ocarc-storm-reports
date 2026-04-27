@@ -12,11 +12,9 @@ body { margin:0; font-family:Arial; }
 #navbar { background:#222; color:white; padding:12px; font-size:20px; }
 #map { height:90vh; }
 
-/* Legend */
 .legend {
     background:white;
     padding:10px;
-    line-height:18px;
     border-radius:5px;
     box-shadow:0 0 10px rgba(0,0,0,0.2);
 }
@@ -25,7 +23,6 @@ body { margin:0; font-family:Arial; }
     height:18px;
     float:left;
     margin-right:8px;
-    opacity:0.7;
 }
 </style>
 </head>
@@ -53,12 +50,12 @@ fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties
 .then(r=>r.json())
 .then(d=>countyLayer.addData(d));
 
-/******** COUNTY UGC ********/
+/******** TARGET COUNTIES ********/
 var targetCounties = [
 "INC117","INC037","INC175","INC025","INC043","INC093"
 ];
 
-/******** ZONE → COUNTY MAP ********/
+/******** ZONE → COUNTY ********/
 var zoneToCounty = {
 "INZ051":["INC117","INC037","INC175","INC025","INC043","INC093"]
 };
@@ -73,7 +70,7 @@ var countyCenters = {
 "INC093":[38.86,-86.50]
 };
 
-/******** ALERT STATE ********/
+/******** ALERT TRACKING ********/
 var countyAlertStatus = {};
 var nwsLayer = L.layerGroup().addTo(map);
 
@@ -90,39 +87,30 @@ countyAlertStatus = {};
 
 data.features.forEach(f=>{
 
-var props = f.properties || {};
-var ugc = (props.geocode && props.geocode.UGC) || [];
+var props=f.properties||{};
+var ugc=(props.geocode && props.geocode.UGC)||[];
 
-/******** MATCH COUNTY OR ZONE ********/
-var matchedCounties = [];
+var matchedCounties=[];
 
-// Direct county match
 ugc.forEach(code=>{
-if(targetCounties.includes(code)){
-matchedCounties.push(code);
-}
+if(targetCounties.includes(code)) matchedCounties.push(code);
 });
 
-// Zone match → map to counties
 ugc.forEach(code=>{
 if(zoneToCounty[code]){
-matchedCounties = matchedCounties.concat(zoneToCounty[code]);
+matchedCounties=matchedCounties.concat(zoneToCounty[code]);
 }
 });
 
-if(matchedCounties.length === 0) return;
+if(matchedCounties.length===0) return;
 
-/******** DETERMINE SEVERITY ********/
-var level = "advisory";
+var level="advisory";
+if(props.event.toLowerCase().includes("warning")) level="warning";
+else if(props.event.toLowerCase().includes("watch")) level="watch";
 
-if(props.event.toLowerCase().includes("warning")) level = "warning";
-else if(props.event.toLowerCase().includes("watch")) level = "watch";
-
-/******** STORE HIGHEST SEVERITY ********/
 matchedCounties.forEach(code=>{
-if(!countyAlertStatus[code]){
-countyAlertStatus[code] = level;
-}else{
+if(!countyAlertStatus[code]) countyAlertStatus[code]=level;
+else{
 if(level==="warning") countyAlertStatus[code]="warning";
 else if(level==="watch" && countyAlertStatus[code]!=="warning"){
 countyAlertStatus[code]="watch";
@@ -130,7 +118,6 @@ countyAlertStatus[code]="watch";
 }
 });
 
-/******** DRAW ALERT ********/
 if(f.geometry){
 L.geoJSON(f,{
 style:{color:"red",weight:2,fillOpacity:0.15}
@@ -159,16 +146,14 @@ setInterval(loadNWS,60000);
 
 /******** COUNTY STYLING ********/
 function updateCountyStyles(){
-
 countyLayer.eachLayer(function(layer){
+var fips=layer.feature.id;
+var county=fips.substring(2);
+var ugcCode="IN"+county;
 
-var fips = layer.feature.id;
-var county = fips.substring(2);
-var ugcCode = "IN" + county;
+var status=countyAlertStatus[ugcCode];
 
-var status = countyAlertStatus[ugcCode];
-
-var style = { color:"#555", weight:1, fillOpacity:0.05 };
+var style={color:"#555",weight:1,fillOpacity:0.05};
 
 if(status==="warning"){
 style.fillColor="red";
@@ -184,20 +169,104 @@ style.fillOpacity=0.25;
 }
 
 layer.setStyle(style);
-
 });
-
 }
 
+/******** ICONS ********/
+function makeIcon(url){
+return L.icon({
+iconUrl:url,
+iconSize:[32,32],
+iconAnchor:[16,32],
+popupAnchor:[0,-32]
+});
+}
+
+var tornadoIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/tornado.png');
+var hailIcon    = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/hail.png');
+var windIcon    = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/wind.png');
+var powerIcon   = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/power.png');
+var floodIcon   = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/flood.png');
+var snowIcon    = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/snow.png');
+var funnelIcon  = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/funnel.png');
+
+/******** MARKERS ********/
+var markers=L.layerGroup().addTo(map);
+
+function addMarker(lat,lon,row){
+
+var callsign=row["Amateur Radio Callsign"]||"Unknown";
+var weather=(row["Type of WX Event"]||"Unknown").toLowerCase();
+
+var keys=Object.keys(row);
+var notes=[keys[7],keys[8],keys[9],keys[10],keys[11],keys[12]]
+.map(k=>row[k])
+.filter(v=>v && v.trim()!=="")
+.join(" | ");
+
+var popup="<b>"+callsign+"</b><br>"+weather+"<br>"+notes;
+
+var iconUse=L.icon({
+iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+iconSize:[25,41]
+});
+
+if(weather.includes("tornado")) iconUse=tornadoIcon;
+else if(weather.includes("funnel")) iconUse=funnelIcon;
+else if(weather.includes("hail")) iconUse=hailIcon;
+else if(weather.includes("flood")) iconUse=floodIcon;
+else if(weather.includes("snow")||weather.includes("ice")) iconUse=snowIcon;
+else if(weather.includes("wind")||weather.includes("damage")) iconUse=windIcon;
+else if(weather.includes("power")||weather.includes("outage")) iconUse=powerIcon;
+
+L.marker([lat,lon],{icon:iconUse}).bindPopup(popup).addTo(markers);
+}
+
+/******** GEOCODING ********/
+function geocode(coords,row){
+
+if(coords.toLowerCase().includes("jasper")){
+addMarker(38.3914,-86.9311,row);
+return;
+}
+
+var url="https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(coords+", Indiana");
+
+fetch(url)
+.then(r=>r.json())
+.then(res=>{
+if(res.length>0){
+addMarker(parseFloat(res[0].lat),parseFloat(res[0].lon),row);
+}
+});
+}
+
+/******** LOAD REPORTS ********/
+fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/Form%20Responses%201")
+.then(r=>r.json())
+.then(data=>{
+data.forEach(row=>{
+var c=(row["Coordinates"]||"").trim();
+if(!c) return;
+
+if(c.match(/^[-+]?\\d*\\.?\\d+,/)){
+var p=c.split(",");
+addMarker(parseFloat(p[0]),parseFloat(p[1]),row);
+}else{
+geocode(c,row);
+}
+});
+});
+
 /******** LEGEND ********/
-var legend = L.control({position:'bottomright'});
-legend.onAdd = function(){
-var div = L.DomUtil.create('div','legend');
-div.innerHTML =
-"<b>Alert Levels</b><br>" +
-"<i style='background:red'></i> Warning<br>" +
-"<i style='background:yellow'></i> Watch<br>" +
-"<i style='background:blue'></i> Advisory / Statement<br>";
+var legend=L.control({position:'bottomright'});
+legend.onAdd=function(){
+var div=L.DomUtil.create('div','legend');
+div.innerHTML=
+"<b>Alert Levels</b><br>"+
+"<i style='background:red'></i> Warning<br>"+
+"<i style='background:yellow'></i> Watch<br>"+
+"<i style='background:blue'></i> Advisory";
 return div;
 };
 legend.addTo(map);
