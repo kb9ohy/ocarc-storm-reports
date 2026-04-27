@@ -8,23 +8,15 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-body { margin:0; font-family:Arial, Helvetica, sans-serif; }
-
-#navbar {
-    background:#222;
-    color:white;
-    padding:12px;
-    font-size:20px;
-}
-
-#map { height:90vh; width:100%; }
+body { margin:0; font-family:Arial; }
+#navbar { background:#222; color:white; padding:12px; font-size:20px; }
+#map { height:90vh; }
 
 /* Legend */
 .legend {
     background:white;
     padding:10px;
     line-height:18px;
-    color:#333;
     border-radius:5px;
     box-shadow:0 0 10px rgba(0,0,0,0.2);
 }
@@ -40,22 +32,16 @@ body { margin:0; font-family:Arial, Helvetica, sans-serif; }
 
 <body>
 
-<div id="navbar">
-OCARC Weather Center |
-<a href="index.html" style="color:white;">Home</a> |
-<a href="stormmap.html" style="color:white;">Storm Map</a>
-</div>
-
+<div id="navbar">OCARC Weather Center</div>
 <div id="map"></div>
 
 <script>
 
 /******** MAP ********/
-var map = L.map('map').setView([38.548,-86.622],9);
+var map = L.map('map').setView([38.55,-86.6],9);
 
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    maxZoom:18,
-    attribution:'© OpenStreetMap'
+    maxZoom:18
 }).addTo(map);
 
 /******** COUNTIES ********/
@@ -67,26 +53,28 @@ fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties
 .then(r=>r.json())
 .then(d=>countyLayer.addData(d));
 
-/******** TARGET COUNTIES ********/
+/******** COUNTY UGC ********/
 var targetCounties = [
-"INC117","INC037","INC093","INC101","INC175","INC025","INC123"
+"INC117","INC037","INC175","INC025","INC043","INC093"
 ];
+
+/******** ZONE → COUNTY MAP ********/
+var zoneToCounty = {
+"INZ051":["INC117","INC037","INC175","INC025","INC043","INC093"]
+};
 
 /******** COUNTY CENTERS ********/
 var countyCenters = {
 "INC117":[38.54,-86.50],
 "INC037":[38.39,-86.93],
-"INC093":[38.86,-86.50],
-"INC101":[38.71,-86.80],
 "INC175":[38.61,-86.10],
 "INC025":[38.29,-86.47],
-"INC123":[38.08,-86.63]
+"INC043":[38.21,-86.12],
+"INC093":[38.86,-86.50]
 };
 
-/******** ALERT TRACKER ********/
+/******** ALERT STATE ********/
 var countyAlertStatus = {};
-
-/******** NWS LAYER ********/
 var nwsLayer = L.layerGroup().addTo(map);
 
 function loadNWS(){
@@ -105,8 +93,24 @@ data.features.forEach(f=>{
 var props = f.properties || {};
 var ugc = (props.geocode && props.geocode.UGC) || [];
 
-var match = ugc.some(c => targetCounties.includes(c));
-if(!match) return;
+/******** MATCH COUNTY OR ZONE ********/
+var matchedCounties = [];
+
+// Direct county match
+ugc.forEach(code=>{
+if(targetCounties.includes(code)){
+matchedCounties.push(code);
+}
+});
+
+// Zone match → map to counties
+ugc.forEach(code=>{
+if(zoneToCounty[code]){
+matchedCounties = matchedCounties.concat(zoneToCounty[code]);
+}
+});
+
+if(matchedCounties.length === 0) return;
 
 /******** DETERMINE SEVERITY ********/
 var level = "advisory";
@@ -114,17 +118,15 @@ var level = "advisory";
 if(props.event.toLowerCase().includes("warning")) level = "warning";
 else if(props.event.toLowerCase().includes("watch")) level = "watch";
 
-/******** STORE SEVERITY ********/
-ugc.forEach(code=>{
-if(!targetCounties.includes(code)) return;
-
+/******** STORE HIGHEST SEVERITY ********/
+matchedCounties.forEach(code=>{
 if(!countyAlertStatus[code]){
-    countyAlertStatus[code] = level;
+countyAlertStatus[code] = level;
 }else{
-    if(level==="warning") countyAlertStatus[code]="warning";
-    else if(level==="watch" && countyAlertStatus[code]!=="warning"){
-        countyAlertStatus[code]="watch";
-    }
+if(level==="warning") countyAlertStatus[code]="warning";
+else if(level==="watch" && countyAlertStatus[code]!=="warning"){
+countyAlertStatus[code]="watch";
+}
 }
 });
 
@@ -136,7 +138,7 @@ style:{color:"red",weight:2,fillOpacity:0.15}
 .bindPopup("<b>"+props.event+"</b><br>"+props.areaDesc)
 .addTo(nwsLayer);
 }else{
-ugc.forEach(code=>{
+matchedCounties.forEach(code=>{
 if(countyCenters[code]){
 L.marker(countyCenters[code])
 .bindPopup("<b>"+props.event+"</b><br>"+props.areaDesc)
@@ -155,7 +157,7 @@ updateCountyStyles();
 loadNWS();
 setInterval(loadNWS,60000);
 
-/******** COUNTY STYLE UPDATE ********/
+/******** COUNTY STYLING ********/
 function updateCountyStyles(){
 
 countyLayer.eachLayer(function(layer){
@@ -169,16 +171,16 @@ var status = countyAlertStatus[ugcCode];
 var style = { color:"#555", weight:1, fillOpacity:0.05 };
 
 if(status==="warning"){
-    style.fillColor="red";
-    style.fillOpacity=0.35;
+style.fillColor="red";
+style.fillOpacity=0.35;
 }
 else if(status==="watch"){
-    style.fillColor="yellow";
-    style.fillOpacity=0.30;
+style.fillColor="yellow";
+style.fillOpacity=0.30;
 }
 else if(status==="advisory"){
-    style.fillColor="blue";
-    style.fillOpacity=0.25;
+style.fillColor="blue";
+style.fillOpacity=0.25;
 }
 
 layer.setStyle(style);
@@ -187,101 +189,8 @@ layer.setStyle(style);
 
 }
 
-/******** ICONS ********/
-function makeIcon(url){
-return L.icon({
-iconUrl:url,
-iconSize:[32,32],
-iconAnchor:[16,32],
-popupAnchor:[0,-32]
-});
-}
-
-var tornadoIcon = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/tornado.png');
-var hailIcon    = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/hail.png');
-var windIcon    = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/wind.png');
-var powerIcon   = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/power.png');
-var floodIcon   = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/flood.png');
-var snowIcon    = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/snow.png');
-var funnelIcon  = makeIcon('https://raw.githubusercontent.com/kb9ohy/ocarc-storm-reports/main/icons/funnel.png');
-
-/******** MARKERS ********/
-var markers=L.layerGroup().addTo(map);
-
-function addMarker(lat,lon,row){
-
-var callsign=row["Amateur Radio Callsign"]||"Unknown";
-var weather=(row["Type of WX Event"]||"Unknown").toLowerCase();
-
-var keys=Object.keys(row);
-var notes=[keys[7],keys[8],keys[9],keys[10],keys[11],keys[12]]
-.map(k=>row[k])
-.filter(v=>v && v.trim()!=="")
-.join(" | ");
-
-var popup=
-"<b>Callsign:</b> "+callsign+
-"<br><b>Weather:</b> "+weather+
-"<br><b>Location:</b> "+(row["Coordinates"]||"")+
-"<br><b>Notes:</b> "+(notes||"None");
-
-var iconUse=L.icon({
-iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-iconSize:[25,41],
-iconAnchor:[12,41],
-popupAnchor:[1,-34]
-});
-
-if(weather.includes("tornado")) iconUse=tornadoIcon;
-else if(weather.includes("funnel")) iconUse=funnelIcon;
-else if(weather.includes("hail")) iconUse=hailIcon;
-else if(weather.includes("flood")) iconUse=floodIcon;
-else if(weather.includes("snow")||weather.includes("ice")) iconUse=snowIcon;
-else if(weather.includes("wind")||weather.includes("damage")) iconUse=windIcon;
-else if(weather.includes("power")||weather.includes("outage")) iconUse=powerIcon;
-
-L.marker([lat,lon],{icon:iconUse}).bindPopup(popup).addTo(markers);
-}
-
-/******** GEOCODING ********/
-function geocode(coords,row){
-
-if(coords.toLowerCase().includes("jasper")){
-addMarker(38.3914,-86.9311,row);
-return;
-}
-
-var url="https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(coords+", Indiana");
-
-fetch(url)
-.then(r=>r.json())
-.then(res=>{
-if(res.length>0){
-addMarker(parseFloat(res[0].lat),parseFloat(res[0].lon),row);
-}
-});
-}
-
-/******** SHEET ********/
-fetch("https://opensheet.elk.sh/1gibjXPu6Js8j045xaxZJc7ortC6HA51aJgH-nghKvDk/Form%20Responses%201")
-.then(r=>r.json())
-.then(data=>{
-data.forEach(row=>{
-var c=(row["Coordinates"]||"").trim();
-if(!c) return;
-
-if(c.match(/^[-+]?\\d*\\.?\\d+,/)){
-var p=c.split(",");
-addMarker(parseFloat(p[0]),parseFloat(p[1]),row);
-}else{
-geocode(c,row);
-}
-});
-});
-
 /******** LEGEND ********/
 var legend = L.control({position:'bottomright'});
-
 legend.onAdd = function(){
 var div = L.DomUtil.create('div','legend');
 div.innerHTML =
@@ -291,7 +200,6 @@ div.innerHTML =
 "<i style='background:blue'></i> Advisory / Statement<br>";
 return div;
 };
-
 legend.addTo(map);
 
 </script>
