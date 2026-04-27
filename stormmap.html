@@ -9,8 +9,32 @@
 
 <style>
 body { margin:0; font-family:Arial, Helvetica, sans-serif; }
-#navbar { background:#222; color:white; padding:12px; font-size:20px; }
+
+#navbar {
+    background:#222;
+    color:white;
+    padding:12px;
+    font-size:20px;
+}
+
 #map { height:90vh; width:100%; }
+
+/* Legend */
+.legend {
+    background:white;
+    padding:10px;
+    line-height:18px;
+    color:#333;
+    border-radius:5px;
+    box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+.legend i {
+    width:18px;
+    height:18px;
+    float:left;
+    margin-right:8px;
+    opacity:0.7;
+}
 </style>
 </head>
 
@@ -43,51 +67,75 @@ fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties
 .then(r=>r.json())
 .then(d=>countyLayer.addData(d));
 
-/******** TARGET COUNTIES (UGC) ********/
+/******** TARGET COUNTIES ********/
 var targetCounties = [
 "INC117","INC037","INC093","INC101","INC175","INC025","INC123"
 ];
 
-/******** COUNTY CENTERS (for fallback markers) ********/
+/******** COUNTY CENTERS ********/
 var countyCenters = {
-"INC117":[38.54,-86.50], // Orange
-"INC037":[38.39,-86.93], // Dubois (Jasper)
-"INC093":[38.86,-86.50], // Lawrence
-"INC101":[38.71,-86.80], // Martin
-"INC175":[38.61,-86.10], // Washington
-"INC025":[38.29,-86.47], // Crawford
-"INC123":[38.08,-86.63]  // Perry
+"INC117":[38.54,-86.50],
+"INC037":[38.39,-86.93],
+"INC093":[38.86,-86.50],
+"INC101":[38.71,-86.80],
+"INC175":[38.61,-86.10],
+"INC025":[38.29,-86.47],
+"INC123":[38.08,-86.63]
 };
 
-/******** NWS ALERTS ********/
+/******** ALERT TRACKER ********/
+var countyAlertStatus = {};
+
+/******** NWS LAYER ********/
 var nwsLayer = L.layerGroup().addTo(map);
 
 function loadNWS(){
+
 fetch("https://api.weather.gov/alerts/active",{
 headers:{"Accept":"application/geo+json"}
 })
 .then(r=>r.json())
 .then(data=>{
+
 nwsLayer.clearLayers();
+countyAlertStatus = {};
 
 data.features.forEach(f=>{
-var props=f.properties||{};
-var ugc=(props.geocode && props.geocode.UGC)||[];
 
-var match=ugc.some(c=>targetCounties.includes(c));
+var props = f.properties || {};
+var ugc = (props.geocode && props.geocode.UGC) || [];
+
+var match = ugc.some(c => targetCounties.includes(c));
 if(!match) return;
 
-// polygon alerts
+/******** DETERMINE SEVERITY ********/
+var level = "advisory";
+
+if(props.event.toLowerCase().includes("warning")) level = "warning";
+else if(props.event.toLowerCase().includes("watch")) level = "watch";
+
+/******** STORE SEVERITY ********/
+ugc.forEach(code=>{
+if(!targetCounties.includes(code)) return;
+
+if(!countyAlertStatus[code]){
+    countyAlertStatus[code] = level;
+}else{
+    if(level==="warning") countyAlertStatus[code]="warning";
+    else if(level==="watch" && countyAlertStatus[code]!=="warning"){
+        countyAlertStatus[code]="watch";
+    }
+}
+});
+
+/******** DRAW ALERT ********/
 if(f.geometry){
 L.geoJSON(f,{
 style:{color:"red",weight:2,fillOpacity:0.15}
 })
 .bindPopup("<b>"+props.event+"</b><br>"+props.areaDesc)
 .addTo(nwsLayer);
-}
-
-// fallback marker in county
-else{
+}else{
 ugc.forEach(code=>{
 if(countyCenters[code]){
 L.marker(countyCenters[code])
@@ -99,11 +147,45 @@ L.marker(countyCenters[code])
 
 });
 
+updateCountyStyles();
+
 });
 }
 
 loadNWS();
 setInterval(loadNWS,60000);
+
+/******** COUNTY STYLE UPDATE ********/
+function updateCountyStyles(){
+
+countyLayer.eachLayer(function(layer){
+
+var fips = layer.feature.id;
+var county = fips.substring(2);
+var ugcCode = "IN" + county;
+
+var status = countyAlertStatus[ugcCode];
+
+var style = { color:"#555", weight:1, fillOpacity:0.05 };
+
+if(status==="warning"){
+    style.fillColor="red";
+    style.fillOpacity=0.35;
+}
+else if(status==="watch"){
+    style.fillColor="yellow";
+    style.fillOpacity=0.30;
+}
+else if(status==="advisory"){
+    style.fillColor="blue";
+    style.fillOpacity=0.25;
+}
+
+layer.setStyle(style);
+
+});
+
+}
 
 /******** ICONS ********/
 function makeIcon(url){
@@ -150,7 +232,6 @@ iconAnchor:[12,41],
 popupAnchor:[1,-34]
 });
 
-// robust icon matching
 if(weather.includes("tornado")) iconUse=tornadoIcon;
 else if(weather.includes("funnel")) iconUse=funnelIcon;
 else if(weather.includes("hail")) iconUse=hailIcon;
@@ -165,7 +246,6 @@ L.marker([lat,lon],{icon:iconUse}).bindPopup(popup).addTo(markers);
 /******** GEOCODING ********/
 function geocode(coords,row){
 
-// HARD FIX for Jasper, IN
 if(coords.toLowerCase().includes("jasper")){
 addMarker(38.3914,-86.9311,row);
 return;
@@ -198,6 +278,21 @@ geocode(c,row);
 }
 });
 });
+
+/******** LEGEND ********/
+var legend = L.control({position:'bottomright'});
+
+legend.onAdd = function(){
+var div = L.DomUtil.create('div','legend');
+div.innerHTML =
+"<b>Alert Levels</b><br>" +
+"<i style='background:red'></i> Warning<br>" +
+"<i style='background:yellow'></i> Watch<br>" +
+"<i style='background:blue'></i> Advisory / Statement<br>";
+return div;
+};
+
+legend.addTo(map);
 
 </script>
 
