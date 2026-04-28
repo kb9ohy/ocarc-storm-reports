@@ -55,11 +55,6 @@ var targetCounties = [
 "INC117","INC037","INC175","INC025","INC043","INC093"
 ];
 
-/******** ZONE → COUNTY ********/
-var zoneToCounty = {
-"INZ051":["INC117","INC037","INC175","INC025","INC043","INC093"]
-};
-
 /******** COUNTY CENTERS ********/
 var countyCenters = {
 "INC117":[38.54,-86.50],
@@ -92,22 +87,22 @@ var ugc=(props.geocode && props.geocode.UGC)||[];
 
 var matchedCounties=[];
 
-ugc.forEach(code=>{
-if(targetCounties.includes(code)) matchedCounties.push(code);
-});
+/******** MATCH COUNTY OR ANY INDIANA ZONE ********/
+var match = ugc.some(code =>
+    targetCounties.includes(code) || code.startsWith("INZ")
+);
 
-ugc.forEach(code=>{
-if(zoneToCounty[code]){
-matchedCounties=matchedCounties.concat(zoneToCounty[code]);
-}
-});
+if(!match) return;
 
-if(matchedCounties.length===0) return;
+/******** APPLY ALERT TO ALL TARGET COUNTIES ********/
+matchedCounties = targetCounties.slice();
 
+/******** DETERMINE SEVERITY ********/
 var level="advisory";
 if(props.event.toLowerCase().includes("warning")) level="warning";
 else if(props.event.toLowerCase().includes("watch")) level="watch";
 
+/******** STORE HIGHEST SEVERITY ********/
 matchedCounties.forEach(code=>{
 if(!countyAlertStatus[code]) countyAlertStatus[code]=level;
 else{
@@ -118,6 +113,7 @@ countyAlertStatus[code]="watch";
 }
 });
 
+/******** DRAW ALERT ********/
 if(f.geometry){
 L.geoJSON(f,{
 style:{color:"red",weight:2,fillOpacity:0.15}
