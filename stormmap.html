@@ -69,6 +69,19 @@ var countyCenters = {
 var countyAlertStatus = {};
 var nwsLayer = L.layerGroup().addTo(map);
 
+/******** PRIORITY FUNCTION ********/
+function getAlertPriority(event){
+event = event.toLowerCase();
+
+if(event.includes("tornado warning")) return 5;
+if(event.includes("severe thunderstorm warning")) return 4;
+if(event.includes("flash flood warning")) return 3;
+if(event.includes("warning")) return 2;
+if(event.includes("watch")) return 1;
+
+return 0;
+}
+
 function loadNWS(){
 
 fetch("https://api.weather.gov/alerts/active",{
@@ -85,32 +98,31 @@ data.features.forEach(f=>{
 var props=f.properties||{};
 var ugc=(props.geocode && props.geocode.UGC)||[];
 
-var matchedCounties=[];
-
-/******** MATCH COUNTY OR ANY INDIANA ZONE ********/
 var match = ugc.some(code =>
     targetCounties.includes(code) || code.startsWith("INZ")
 );
 
 if(!match) return;
 
-/******** APPLY ALERT TO ALL TARGET COUNTIES ********/
-matchedCounties = targetCounties.slice();
+// Apply to all local counties for awareness
+var matchedCounties = targetCounties.slice();
 
-/******** DETERMINE SEVERITY ********/
 var level="advisory";
 if(props.event.toLowerCase().includes("warning")) level="warning";
 else if(props.event.toLowerCase().includes("watch")) level="watch";
 
-/******** STORE HIGHEST SEVERITY ********/
+var priority = getAlertPriority(props.event);
+
 matchedCounties.forEach(code=>{
-if(!countyAlertStatus[code]) countyAlertStatus[code]=level;
-else{
-if(level==="warning") countyAlertStatus[code]="warning";
-else if(level==="watch" && countyAlertStatus[code]!=="warning"){
-countyAlertStatus[code]="watch";
+
+if(!countyAlertStatus[code]){
+countyAlertStatus[code] = { level: level, priority: priority };
+}else{
+if(priority > countyAlertStatus[code].priority){
+countyAlertStatus[code] = { level: level, priority: priority };
 }
 }
+
 });
 
 /******** DRAW ALERT ********/
@@ -147,7 +159,8 @@ var fips=layer.feature.id;
 var county=fips.substring(2);
 var ugcCode="IN"+county;
 
-var status=countyAlertStatus[ugcCode];
+var statusObj = countyAlertStatus[ugcCode];
+var status = statusObj ? statusObj.level : null;
 
 var style={color:"#555",weight:1,fillOpacity:0.05};
 
