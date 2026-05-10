@@ -13,13 +13,15 @@ This is a static Leaflet map for OCARC severe weather operations. It can show:
 
 ## Google Sheet Setup
 
-The map expects a published Google Sheet CSV URL.
+The map can use a normal Google Sheet share URL, a published CSV URL, or a Google Sheets `gviz` CSV URL.
 
 1. Open the response spreadsheet connected to the Google Form.
 2. Choose `File` -> `Share` -> `Publish to web`.
 3. Publish the response sheet as CSV.
 4. Copy the CSV URL.
 5. Paste it into `GOOGLE_SHEET_CSV_URL` in `stormmap.html`.
+
+If the sheet is shared publicly as "Anyone with the link can view," you can also paste the normal `/edit?usp=sharing` URL. The map will convert it to the CSV endpoint.
 
 For testing without editing the file, pass the CSV URL as a query parameter:
 
