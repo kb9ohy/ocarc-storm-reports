@@ -1,16 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <title>OCARC Storm Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    color: #18202a;
+    background: #f6f7f9;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+main {
+    width: min(620px, calc(100vw - 32px));
+    padding: 28px;
+    border: 1px solid #d9dee7;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 8px 28px rgba(16, 24, 40, 0.08);
+}
+
+h1 {
+    margin: 0 0 8px;
+    color: #123b66;
+    font-size: 28px;
+}
+
+p {
+    margin: 0 0 22px;
+    color: #667085;
+    line-height: 1.45;
+}
+
+a {
+    display: inline-block;
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: #ffffff;
+    background: #123b66;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+a:hover,
+a:focus {
+    background: #0f3154;
+}
+</style>
 </head>
 
 <body>
-
-<h1>Orange County Amateur Radio Club</h1>
-
-<p>Storm Spotter Dashboard</p>
-
-<a href="stormmap.html">Open Storm Map</a>
-
+<main>
+    <h1>Orange County Amateur Radio Club</h1>
+    <p>Storm spotter report dashboard for local severe weather operations.</p>
+    <a href="stormmap.html">Open Storm Map</a>
+</main>
 </body>
 </html>
