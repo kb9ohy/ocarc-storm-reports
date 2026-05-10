@@ -1,0 +1,4 @@
+Timestamp,Time Observed,Amateur Radio Callsign,Latitude,Longitude,Location Description,County,Type of WX Event,Hail Size,High Wind Speeds (Estimated),Wind Damage Estimates,What kind of flooding was observed,Electric Provider,Snow total (Inches),Remarks,Status,Verified,Map Visible?
+2026-05-10 18:05,2026-05-10 18:00,KB9OHY,38.5561,-86.4683,"Paoli, IN",Orange,Hail,Quarter - 1.00 in,,,,,,"Hail covering the ground near town square",new,false,true
+2026-05-10 18:20,2026-05-10 18:15,N9ABC,38.6773,-86.9147,"US 150 near Shoals, IN",Martin,Flooding,,,,Water over roadway,,,Road passable with caution,reviewed,true,true
+2026-05-10 18:35,2026-05-10 18:30,W9XYZ,38.8612,-86.4892,"Bedford, IN",Lawrence,Wind,,55 mph,Large limbs down,,,,Large tree limbs down across side street,relayed,true,true

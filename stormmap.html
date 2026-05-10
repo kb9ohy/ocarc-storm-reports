@@ -1,155 +1,849 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <title>OCARC Storm Reports Map</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-body { margin:0; font-family:Arial; }
-#navbar { background:#222; color:white; padding:12px; font-size:20px; }
-#map { height:90vh; }
+:root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --ink: #18202a;
+    --muted: #667085;
+    --line: #d9dee7;
+    --brand: #123b66;
+    --danger: #b42318;
+    --watch: #b7791f;
+    --ok: #067647;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+#app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    height: 100vh;
+}
+
+#mapPanel {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#navbar {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 58px;
+    padding: 10px 16px;
+    color: #ffffff;
+    background: var(--brand);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+}
+
+#navbar h1 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+#statusLine {
+    font-size: 13px;
+    color: #d8e8f8;
+    text-align: right;
+}
+
+#map {
+    min-height: 0;
+    flex: 1;
+}
+
+#sidebar {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-left: 1px solid var(--line);
+    background: var(--panel);
+}
+
+.panelSection {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+.panelSection h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+}
+
+.field {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.field label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #344054;
+    text-transform: uppercase;
+}
+
+.field select,
+.field input {
+    width: 100%;
+    min-height: 36px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 7px 9px;
+    font: inherit;
+    background: #ffffff;
+}
+
+.filterGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.filterCheck {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fbfcfe;
+}
+
+.filterCheck input {
+    margin: 0;
+}
+
+#reportsList {
+    min-height: 0;
+    overflow: auto;
+    padding: 8px;
+}
+
+.reportCard {
+    width: 100%;
+    margin: 0 0 8px;
+    border: 1px solid var(--line);
+    border-left: 5px solid #697586;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: left;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.reportCard:hover,
+.reportCard:focus {
+    outline: 2px solid #8cc4ff;
+    outline-offset: 1px;
+}
+
+.reportTitle {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-weight: 700;
+}
+
+.reportMeta,
+.reportRemarks,
+.emptyState {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.reportRemarks {
+    margin-top: 6px;
+}
+
+.badge {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #344054;
+    background: #eef2f6;
+}
+
+.legend {
+    display: grid;
+    gap: 7px;
+    font-size: 13px;
+}
+
+.legendItem {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.legendSwatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.leaflet-popup-content {
+    min-width: 220px;
+}
+
+.popupTitle {
+    margin-bottom: 6px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.popupRow {
+    margin: 4px 0;
+}
+
+.popupLabel {
+    font-weight: 700;
+}
+
+.alertMessage {
+    color: var(--danger);
+}
+
+@media (max-width: 860px) {
+    #app {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(360px, 58vh) minmax(260px, 42vh);
+        height: 100vh;
+    }
+
+    #sidebar {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+    }
+
+    #navbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    #statusLine {
+        text-align: left;
+    }
+}
 </style>
 </head>
 
 <body>
+<div id="app">
+    <main id="mapPanel">
+        <div id="navbar">
+            <h1>OCARC Storm Reports</h1>
+            <div id="statusLine">Loading weather data...</div>
+        </div>
+        <div id="map" aria-label="OCARC storm reports map"></div>
+    </main>
 
-<div id="navbar">OCARC Weather Center</div>
-<div id="map"></div>
+    <aside id="sidebar" aria-label="Storm report controls">
+        <section class="panelSection">
+            <h2>Report Filters</h2>
+            <div class="field">
+                <label for="timeFilter">Time Window</label>
+                <select id="timeFilter">
+                    <option value="1">Last 1 hour</option>
+                    <option value="3">Last 3 hours</option>
+                    <option value="6">Last 6 hours</option>
+                    <option value="12">Last 12 hours</option>
+                    <option value="24" selected>Last 24 hours</option>
+                    <option value="72">Last 72 hours</option>
+                    <option value="all">All reports</option>
+                </select>
+            </div>
+            <div class="filterGrid" id="typeFilters"></div>
+        </section>
+
+        <section class="panelSection">
+            <h2>Legend</h2>
+            <div class="legend">
+                <div class="legendItem"><span class="legendSwatch" style="background:#ef4444"></span> Warning county</div>
+                <div class="legendItem"><span class="legendSwatch" style="background:#facc15"></span> Watch county</div>
+                <div class="legendItem"><span class="legendSwatch" style="background:#3b82f6"></span> Advisory county</div>
+                <div class="legendItem"><span class="legendSwatch" style="background:#ffffff"></span> Local report marker</div>
+            </div>
+        </section>
+
+        <section class="panelSection">
+            <h2>Latest Reports</h2>
+            <div class="emptyState" id="reportCount">No reports loaded yet.</div>
+        </section>
+        <div id="reportsList"></div>
+    </aside>
+</div>
 
 <script>
+/******** CONFIG ********/
+// Paste a Google Sheet share URL, published CSV URL, or gviz CSV URL here.
+// You can also test with stormmap.html?sheet=https%3A%2F%2Fdocs.google.com%2F...
+var GOOGLE_SHEET_CSV_URL = "";
+var REFRESH_INTERVAL_MS = 60000;
 
-/******** MAP ********/
-var map = L.map('map').setView([38.55,-86.6],9);
-
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    maxZoom:18
-}).addTo(map);
-
-/******** COUNTIES ********/
-var countyLayer = L.geoJSON(null,{
-    style:()=>({color:"#555",weight:1,fillOpacity:0.05})
-}).addTo(map);
-
-fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json")
-.then(r=>r.json())
-.then(d=>countyLayer.addData(d));
-
-/******** TARGET COUNTIES ********/
-var targetCounties = [
-"INC117","INC037","INC175","INC025","INC043","INC093"
+var REPORT_TYPES = [
+    { key: "hail", label: "Hail", icon: "icons/hail.png", color: "#7c3aed", aliases: ["hail"] },
+    { key: "flood", label: "Flooding", icon: "icons/flood.png", color: "#0ea5e9", aliases: ["flood", "flooding", "water"] },
+    { key: "wind", label: "Wind", icon: "icons/wind.png", color: "#16a34a", aliases: ["wind", "damage", "tree"] },
+    { key: "power", label: "Power", icon: "icons/power.png", color: "#f59e0b", aliases: ["power", "outage", "electric"] },
+    { key: "snow", label: "Snow", icon: "icons/snow.png", color: "#64748b", aliases: ["snow", "sleet", "ice"] },
+    { key: "tornado", label: "Tornado", icon: "icons/tornado.png", color: "#dc2626", aliases: ["tornado"] },
+    { key: "funnel", label: "Funnel", icon: "icons/funnel.png", color: "#be123c", aliases: ["funnel", "rotation", "wall cloud"] }
 ];
 
-/******** ALERT STORAGE ********/
+var TARGET_COUNTIES = ["INC117", "INC037", "INC175", "INC025", "INC043", "INC093"];
+var COUNTY_NAMES = {
+    INC117: "Orange",
+    INC037: "Dubois",
+    INC175: "Washington",
+    INC025: "Crawford",
+    INC043: "Floyd",
+    INC093: "Lawrence"
+};
+
+/******** STATE ********/
+var allReports = [];
+var reportMarkers = [];
 var countyAlertStatus = {};
+var selectedTypes = {};
+REPORT_TYPES.forEach(function(type) {
+    selectedTypes[type.key] = true;
+});
+
+/******** MAP ********/
+var map = L.map("map").setView([38.55, -86.6], 9);
+
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+var countyLayer = L.geoJSON(null, {
+    style: function() {
+        return { color: "#555", weight: 1, fillOpacity: 0.05 };
+    }
+}).addTo(map);
+
 var nwsLayer = L.layerGroup().addTo(map);
+var reportsLayer = L.layerGroup().addTo(map);
 
-/******** PRIORITY ********/
-function getPriority(event){
-event = event.toLowerCase();
+/******** DOM ********/
+var statusLine = document.getElementById("statusLine");
+var reportCount = document.getElementById("reportCount");
+var reportsList = document.getElementById("reportsList");
+var timeFilter = document.getElementById("timeFilter");
+var typeFilters = document.getElementById("typeFilters");
 
-if(event.includes("tornado warning")) return 5;
-if(event.includes("severe thunderstorm warning")) return 4;
-if(event.includes("flash flood warning")) return 3;
-if(event.includes("warning")) return 2;
-if(event.includes("watch")) return 1;
+buildTypeFilters();
 
-return 0;
+timeFilter.addEventListener("change", renderReports);
+
+/******** LOADERS ********/
+fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json")
+    .then(function(response) {
+        if (!response.ok) throw new Error("County boundary load failed");
+        return response.json();
+    })
+    .then(function(data) {
+        countyLayer.addData(data);
+        updateCountyStyles();
+    })
+    .catch(function(error) {
+        setStatus("County boundaries unavailable: " + error.message, true);
+    });
+
+loadAllData();
+setInterval(loadAllData, REFRESH_INTERVAL_MS);
+
+function loadAllData() {
+    setStatus("Refreshing weather data...");
+    Promise.all([loadNWSAlerts(), loadSheetReports()])
+        .then(function() {
+            setStatus("Updated " + formatTime(new Date()) + " | " + allReports.length + " sheet reports");
+        })
+        .catch(function(error) {
+            setStatus("Update issue: " + error.message, true);
+        });
 }
 
-function loadNWS(){
+function loadNWSAlerts() {
+    return fetch("https://api.weather.gov/alerts/active?area=IN", {
+        headers: { "Accept": "application/geo+json" }
+    })
+    .then(function(response) {
+        if (!response.ok) throw new Error("NWS alerts unavailable");
+        return response.json();
+    })
+    .then(function(data) {
+        nwsLayer.clearLayers();
+        countyAlertStatus = {};
 
-fetch("https://api.weather.gov/alerts/active",{
-headers:{"Accept":"application/geo+json"}
-})
-.then(r=>r.json())
-.then(data=>{
+        data.features.forEach(function(feature) {
+            var props = feature.properties || {};
+            var ugc = props.geocode && props.geocode.UGC ? props.geocode.UGC : [];
+            var matched = ugc.filter(function(code) {
+                return TARGET_COUNTIES.indexOf(code) !== -1;
+            });
 
-nwsLayer.clearLayers();
-countyAlertStatus = {};
+            if (matched.length === 0) return;
 
-data.features.forEach(f=>{
+            var eventName = props.event || "";
+            var level = "advisory";
+            if (eventName.toLowerCase().indexOf("warning") !== -1) level = "warning";
+            else if (eventName.toLowerCase().indexOf("watch") !== -1) level = "watch";
 
-var props=f.properties||{};
-var ugc=(props.geocode && props.geocode.UGC)||[];
+            var priority = getAlertPriority(eventName);
+            matched.forEach(function(code) {
+                if (!countyAlertStatus[code] || priority > countyAlertStatus[code].priority) {
+                    countyAlertStatus[code] = { level: level, priority: priority };
+                }
+            });
 
-// Only keep alerts that touch our counties
-var matched = ugc.filter(code => targetCounties.includes(code));
+            if (feature.geometry) {
+                L.geoJSON(feature, {
+                    style: { color: "#b42318", weight: 2, fillOpacity: 0.12 }
+                })
+                .bindPopup(buildAlertPopup(props))
+                .addTo(nwsLayer);
+            }
+        });
 
-if(matched.length === 0) return;
-
-var level="advisory";
-if(props.event.toLowerCase().includes("warning")) level="warning";
-else if(props.event.toLowerCase().includes("watch")) level="watch";
-
-var priority = getPriority(props.event);
-
-// Apply ONLY to affected counties
-matched.forEach(code=>{
-
-if(!countyAlertStatus[code]){
-countyAlertStatus[code] = { level, priority };
-}else{
-if(priority > countyAlertStatus[code].priority){
-countyAlertStatus[code] = { level, priority };
-}
-}
-
-});
-
-// Draw polygons
-if(f.geometry){
-L.geoJSON(f,{
-style:{color:"red",weight:2,fillOpacity:0.15}
-})
-.bindPopup("<b>"+props.event+"</b>")
-.addTo(nwsLayer);
+        updateCountyStyles();
+    });
 }
 
-});
+function loadSheetReports() {
+    var sheetUrl = getSheetUrl();
+    if (!sheetUrl) {
+        allReports = [];
+        renderReports();
+        return Promise.resolve();
+    }
 
-updateCountyStyles();
-
-});
+    return fetch(sheetUrl, { cache: "no-store" })
+        .then(function(response) {
+            if (!response.ok) throw new Error("Google Sheet reports unavailable");
+            return response.text();
+        })
+        .then(function(csv) {
+            allReports = parseCsv(csv).map(normalizeReport).filter(Boolean);
+            renderReports();
+        });
 }
 
-loadNWS();
-setInterval(loadNWS,60000);
+/******** REPORT RENDERING ********/
+function renderReports() {
+    reportsLayer.clearLayers();
+    reportMarkers = [];
+    reportsList.innerHTML = "";
 
-/******** COUNTY STYLE ********/
-function updateCountyStyles(){
-countyLayer.eachLayer(function(layer){
-var fips=layer.feature.id;
-var county=fips.substring(2);
-var code="IN"+county;
+    var visibleReports = getVisibleReports();
 
-var statusObj = countyAlertStatus[code];
-var status = statusObj ? statusObj.level : null;
+    reportCount.textContent = visibleReports.length + " visible of " + allReports.length + " loaded reports";
 
-var style={color:"#555",weight:1,fillOpacity:0.05};
+    if (visibleReports.length === 0) {
+        reportsList.innerHTML = '<div class="panelSection emptyState">No reports match the current filters.</div>';
+        return;
+    }
 
-if(status==="warning"){
-style.fillColor="red";
-style.fillOpacity=0.35;
+    visibleReports.forEach(function(report) {
+        var marker = L.marker([report.lat, report.lon], {
+            icon: getReportIcon(report.type)
+        })
+        .bindPopup(buildReportPopup(report))
+        .addTo(reportsLayer);
+
+        reportMarkers.push({ id: report.id, marker: marker });
+
+        var card = document.createElement("button");
+        card.className = "reportCard";
+        card.style.borderLeftColor = report.type.color;
+        card.type = "button";
+        card.innerHTML = buildReportCard(report);
+        card.addEventListener("click", function() {
+            map.setView([report.lat, report.lon], Math.max(map.getZoom(), 12));
+            marker.openPopup();
+        });
+        reportsList.appendChild(card);
+    });
 }
-else if(status==="watch"){
-style.fillColor="yellow";
-style.fillOpacity=0.30;
-}
-else if(status==="advisory"){
-style.fillColor="blue";
-style.fillOpacity=0.25;
+
+function getVisibleReports() {
+    var hours = timeFilter.value;
+    var now = Date.now();
+    return allReports.filter(function(report) {
+        if (!report.mapVisible) return false;
+        if (!selectedTypes[report.type.key]) return false;
+        if (hours === "all" || !report.observedAt) return true;
+        var ageHours = (now - report.observedAt.getTime()) / 3600000;
+        return ageHours <= Number(hours);
+    }).sort(function(a, b) {
+        return (b.observedAt ? b.observedAt.getTime() : 0) - (a.observedAt ? a.observedAt.getTime() : 0);
+    });
 }
 
-layer.setStyle(style);
-});
+function buildReportCard(report) {
+    return [
+        '<div class="reportTitle">',
+        '<span>' + escapeHtml(report.type.label) + '</span>',
+        '<span class="badge">' + escapeHtml(report.status || "new") + '</span>',
+        '</div>',
+        '<div class="reportMeta">' + escapeHtml(report.timeLabel) + ' | ' + escapeHtml(report.county || "County unknown") + '</div>',
+        '<div class="reportMeta">' + escapeHtml(report.location || "Location not provided") + '</div>',
+        report.summary ? '<div class="reportRemarks">' + escapeHtml(report.summary) + '</div>' : ''
+    ].join("");
 }
 
+function buildReportPopup(report) {
+    var rows = [
+        popupRow("Observed", report.timeLabel),
+        popupRow("County", report.county),
+        popupRow("Location", report.location),
+        popupRow("Magnitude", report.magnitude),
+        popupRow("Status", report.status),
+        popupRow("Callsign", report.callsign),
+        popupRow("Remarks", report.remarks)
+    ].filter(Boolean).join("");
+
+    return '<div class="popupTitle">' + escapeHtml(report.type.label) + '</div>' + rows;
+}
+
+function buildAlertPopup(props) {
+    var rows = [
+        popupRow("Severity", props.severity),
+        popupRow("Effective", formatDateValue(props.effective)),
+        popupRow("Expires", formatDateValue(props.expires)),
+        popupRow("Source", props.senderName),
+        popupRow("Instruction", props.instruction)
+    ].filter(Boolean).join("");
+
+    return '<div class="popupTitle alertMessage">' + escapeHtml(props.event || "NWS Alert") + '</div>' + rows;
+}
+
+/******** NORMALIZATION ********/
+function normalizeReport(row, index) {
+    var latLon = parseCoordinates(
+        valueFor(row, ["Latitude", "Lat", "GPS Latitude"], true),
+        valueFor(row, ["Longitude", "Lon", "Lng", "GPS Longitude"], true),
+        valueFor(row, ["Coordinates", "GPS Location", "Report Location", "Address"], true)
+    );
+
+    if (!latLon) return null;
+
+    var rawType = valueFor(row, ["Type of WX Event", "Type of Weather Event", "Report Type", "Event Type"], true);
+    var type = getReportType(rawType, row);
+    var observedAt = parseDate(valueFor(row, ["Time Observed", "Observed Time", "Timestamp", "Submitted At"], true));
+    var location = valueFor(row, [
+        "Location Description",
+        "GPS Location",
+        "Coordinates",
+        "Current Address",
+        "Address Including City and State",
+        "Address",
+        "Report Location"
+    ], true);
+    var magnitude = valueFor(row, [
+        "Hail Size",
+        "High Wind Speeds",
+        "Wind Damage Estimates",
+        "Snow total",
+        "Snowfall total",
+        "What kind of flooding was observed"
+    ], true);
+    var remarks = valueFor(row, ["Remarks", "Additional Remarks", "Notes", "Damage Description", "Other"], true);
+
+    return {
+        id: "report-" + index,
+        lat: latLon.lat,
+        lon: latLon.lon,
+        type: type,
+        rawType: rawType,
+        observedAt: observedAt,
+        timeLabel: observedAt ? formatDateValue(observedAt) : "Time not provided",
+        county: valueFor(row, ["County"], true),
+        location: location,
+        magnitude: magnitude,
+        summary: magnitude || remarks,
+        remarks: remarks,
+        callsign: valueFor(row, ["Amateur Radio Callsign", "Callsign", "Reporter Callsign"], true),
+        status: valueFor(row, ["Status", "Map Status", "Verification Status"], true) || "new",
+        mapVisible: isMapVisible(valueFor(row, ["Map Visible?", "Visible"], true))
+    };
+}
+
+function getReportType(rawType, row) {
+    var haystack = [
+        rawType,
+        valueFor(row, ["What kind of flooding was observed"], true),
+        valueFor(row, ["Electric Provider", "Electric Provider in outage area"], true),
+        valueFor(row, ["Hail Size"], true),
+        valueFor(row, ["High Wind Speeds", "Wind Damage Estimates"], true),
+        valueFor(row, ["Snow total"], true)
+    ].join(" ").toLowerCase();
+
+    for (var i = 0; i < REPORT_TYPES.length; i++) {
+        var type = REPORT_TYPES[i];
+        for (var j = 0; j < type.aliases.length; j++) {
+            if (haystack.indexOf(type.aliases[j]) !== -1) return type;
+        }
+    }
+
+    return REPORT_TYPES[2];
+}
+
+function parseCoordinates(latValue, lonValue, combinedValue) {
+    var lat = Number(String(latValue || "").trim());
+    var lon = Number(String(lonValue || "").trim());
+
+    if (isValidCoordinate(lat, lon)) return { lat: lat, lon: lon };
+
+    var combined = String(combinedValue || "");
+    var match = combined.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+    if (!match) {
+        match = combined.match(/lat(?:itude)?[:=\s]+(-?\d+(?:\.\d+)?).*?(?:lon|lng|longitude)[:=\s]+(-?\d+(?:\.\d+)?)/i);
+    }
+    if (!match) return null;
+
+    lat = Number(match[1]);
+    lon = Number(match[2]);
+    return isValidCoordinate(lat, lon) ? { lat: lat, lon: lon } : null;
+}
+
+function isValidCoordinate(lat, lon) {
+    return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+}
+
+function parseDate(value) {
+    if (!value) return null;
+    var date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isMapVisible(value) {
+    if (!value) return true;
+    value = String(value).trim().toLowerCase();
+    return ["false", "no", "n", "0", "hidden", "hide"].indexOf(value) === -1;
+}
+
+function valueFor(row, names, allowPartial) {
+    for (var i = 0; i < names.length; i++) {
+        var normalized = normalizeHeader(names[i]);
+        if (row[normalized]) return row[normalized];
+    }
+
+    if (allowPartial) {
+        var headers = Object.keys(row);
+        for (var j = 0; j < names.length; j++) {
+            var target = normalizeHeader(names[j]);
+            for (var k = 0; k < headers.length; k++) {
+                if (headers[k].indexOf(target) !== -1 || target.indexOf(headers[k]) !== -1) {
+                    return row[headers[k]];
+                }
+            }
+        }
+    }
+
+    return "";
+}
+
+/******** CSV ********/
+function parseCsv(csv) {
+    var rows = [];
+    var current = [];
+    var value = "";
+    var inQuotes = false;
+
+    for (var i = 0; i < csv.length; i++) {
+        var char = csv[i];
+        var next = csv[i + 1];
+
+        if (char === '"' && inQuotes && next === '"') {
+            value += '"';
+            i++;
+        } else if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === "," && !inQuotes) {
+            current.push(value);
+            value = "";
+        } else if ((char === "\n" || char === "\r") && !inQuotes) {
+            if (char === "\r" && next === "\n") i++;
+            current.push(value);
+            rows.push(current);
+            current = [];
+            value = "";
+        } else {
+            value += char;
+        }
+    }
+
+    if (value || current.length) {
+        current.push(value);
+        rows.push(current);
+    }
+
+    if (rows.length < 2) return [];
+
+    var headers = rows.shift().map(normalizeHeader);
+    return rows.filter(function(row) {
+        return row.some(function(cell) { return cell.trim() !== ""; });
+    }).map(function(row) {
+        var obj = {};
+        headers.forEach(function(header, index) {
+            obj[header] = (row[index] || "").trim();
+        });
+        return obj;
+    });
+}
+
+/******** UI HELPERS ********/
+function buildTypeFilters() {
+    REPORT_TYPES.forEach(function(type) {
+        var label = document.createElement("label");
+        label.className = "filterCheck";
+        label.innerHTML = '<input type="checkbox" checked value="' + type.key + '"> ' + escapeHtml(type.label);
+        label.querySelector("input").addEventListener("change", function(event) {
+            selectedTypes[type.key] = event.target.checked;
+            renderReports();
+        });
+        typeFilters.appendChild(label);
+    });
+}
+
+function getReportIcon(type) {
+    return L.icon({
+        iconUrl: type.icon,
+        iconSize: [34, 34],
+        iconAnchor: [17, 34],
+        popupAnchor: [0, -30]
+    });
+}
+
+function updateCountyStyles() {
+    countyLayer.eachLayer(function(layer) {
+        var fips = layer.feature.id;
+        var code = "IN" + fips.substring(2);
+        var statusObj = countyAlertStatus[code];
+        var status = statusObj ? statusObj.level : null;
+        var style = { color: "#555", weight: 1, fillOpacity: 0.05 };
+
+        if (TARGET_COUNTIES.indexOf(code) !== -1) {
+            style.color = "#123b66";
+            style.weight = 2;
+            style.fillOpacity = 0.08;
+        }
+
+        if (status === "warning") {
+            style.fillColor = "#ef4444";
+            style.fillOpacity = 0.35;
+        } else if (status === "watch") {
+            style.fillColor = "#facc15";
+            style.fillOpacity = 0.30;
+        } else if (status === "advisory") {
+            style.fillColor = "#3b82f6";
+            style.fillOpacity = 0.25;
+        }
+
+        layer.setStyle(style);
+        if (TARGET_COUNTIES.indexOf(code) !== -1) {
+            layer.bindTooltip(COUNTY_NAMES[code] || code, { sticky: true });
+        }
+    });
+}
+
+function getAlertPriority(event) {
+    event = String(event || "").toLowerCase();
+    if (event.indexOf("tornado warning") !== -1) return 5;
+    if (event.indexOf("severe thunderstorm warning") !== -1) return 4;
+    if (event.indexOf("flash flood warning") !== -1) return 3;
+    if (event.indexOf("warning") !== -1) return 2;
+    if (event.indexOf("watch") !== -1) return 1;
+    return 0;
+}
+
+function getSheetUrl() {
+    var params = new URLSearchParams(window.location.search);
+    return toCsvUrl(params.get("sheet") || GOOGLE_SHEET_CSV_URL);
+}
+
+function toCsvUrl(url) {
+    if (!url) return "";
+    if (url.indexOf("docs.google.com/spreadsheets/d/") === -1) return url;
+    if (url.indexOf("/gviz/tq") !== -1 || url.indexOf("output=csv") !== -1) return url;
+
+    var match = url.match(/\/spreadsheets\/d\/([^/]+)/);
+    if (!match) return url;
+    var gidMatch = url.match(/[?&#]gid=(\d+)/);
+    var gid = gidMatch ? gidMatch[1] : "0";
+    return "https://docs.google.com/spreadsheets/d/" + match[1] + "/gviz/tq?tqx=out:csv&gid=" + gid;
+}
+
+function setStatus(message, isError) {
+    statusLine.textContent = message;
+    statusLine.className = isError ? "alertMessage" : "";
+}
+
+function popupRow(label, value) {
+    if (!value) return "";
+    return '<div class="popupRow"><span class="popupLabel">' + escapeHtml(label) + ':</span> ' + escapeHtml(value) + '</div>';
+}
+
+function formatDateValue(value) {
+    var date = value instanceof Date ? value : parseDate(value);
+    if (!date) return value || "";
+    return date.toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+    });
+}
+
+function formatTime(date) {
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+}
+
+function normalizeHeader(value) {
+    return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function escapeHtml(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 </script>
-
 </body>
 </html>
-
-
