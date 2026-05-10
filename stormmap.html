@@ -20,7 +20,9 @@
     --ok: #067647;
 }
 
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+}
 
 body {
     margin: 0;
@@ -131,7 +133,9 @@ body {
     background: #fbfcfe;
 }
 
-.filterCheck input { margin: 0; }
+.filterCheck input {
+    margin: 0;
+}
 
 #reportsList {
     min-height: 0;
@@ -174,7 +178,9 @@ body {
     line-height: 1.35;
 }
 
-.reportRemarks { margin-top: 6px; }
+.reportRemarks {
+    margin-top: 6px;
+}
 
 .badge {
     display: inline-block;
@@ -205,7 +211,9 @@ body {
     border: 1px solid rgba(0, 0, 0, 0.25);
 }
 
-.leaflet-popup-content { min-width: 220px; }
+.leaflet-popup-content {
+    min-width: 220px;
+}
 
 .popupTitle {
     margin-bottom: 6px;
@@ -213,9 +221,17 @@ body {
     font-weight: 700;
 }
 
-.popupRow { margin: 4px 0; }
-.popupLabel { font-weight: 700; }
-.alertMessage { color: var(--danger); }
+.popupRow {
+    margin: 4px 0;
+}
+
+.popupLabel {
+    font-weight: 700;
+}
+
+.alertMessage {
+    color: var(--danger);
+}
 
 @media (max-width: 860px) {
     #app {
@@ -235,7 +251,9 @@ body {
         gap: 4px;
     }
 
-    #statusLine { text-align: left; }
+    #statusLine {
+        text-align: left;
+    }
 }
 </style>
 </head>
@@ -288,8 +306,8 @@ body {
 
 <script>
 /******** CONFIG ********/
-// Publish the response sheet as CSV, then paste the URL here. You can also test
-// with stormmap.html?sheet=https%3A%2F%2Fdocs.google.com%2F...
+// Paste a Google Sheet share URL, published CSV URL, or gviz CSV URL here.
+// You can also test with stormmap.html?sheet=https%3A%2F%2Fdocs.google.com%2F...
 var GOOGLE_SHEET_CSV_URL = "";
 var REFRESH_INTERVAL_MS = 60000;
 
@@ -347,6 +365,7 @@ var timeFilter = document.getElementById("timeFilter");
 var typeFilters = document.getElementById("typeFilters");
 
 buildTypeFilters();
+
 timeFilter.addEventListener("change", renderReports);
 
 /******** LOADERS ********/
@@ -449,6 +468,7 @@ function renderReports() {
     reportsList.innerHTML = "";
 
     var visibleReports = getVisibleReports();
+
     reportCount.textContent = visibleReports.length + " visible of " + allReports.length + " loaded reports";
 
     if (visibleReports.length === 0) {
@@ -533,33 +553,34 @@ function buildAlertPopup(props) {
 /******** NORMALIZATION ********/
 function normalizeReport(row, index) {
     var latLon = parseCoordinates(
-        valueFor(row, ["Latitude", "Lat", "GPS Latitude"]),
-        valueFor(row, ["Longitude", "Lon", "Lng", "GPS Longitude"]),
-        valueFor(row, ["GPS Location (Tap link below to capture coordinates)", "GPS Location", "Location", "Report Location", "Address"])
+        valueFor(row, ["Latitude", "Lat", "GPS Latitude"], true),
+        valueFor(row, ["Longitude", "Lon", "Lng", "GPS Longitude"], true),
+        valueFor(row, ["Coordinates", "GPS Location", "Report Location", "Address"], true)
     );
 
     if (!latLon) return null;
 
-    var rawType = valueFor(row, ["Type of WX Event", "Type of Weather Event", "Report Type", "Event Type"]);
+    var rawType = valueFor(row, ["Type of WX Event", "Type of Weather Event", "Report Type", "Event Type"], true);
     var type = getReportType(rawType, row);
-    var observedAt = parseDate(valueFor(row, ["Time Observed", "Observed Time", "Timestamp", "Submitted At"]));
+    var observedAt = parseDate(valueFor(row, ["Time Observed", "Observed Time", "Timestamp", "Submitted At"], true));
     var location = valueFor(row, [
         "Location Description",
-        "GPS Location (Tap link below to capture coordinates)",
         "GPS Location",
-        "OR you can enter your current address including city and state",
+        "Coordinates",
+        "Current Address",
+        "Address Including City and State",
         "Address",
         "Report Location"
-    ]);
+    ], true);
     var magnitude = valueFor(row, [
         "Hail Size",
-        "High Wind Speeds (Estimated)",
+        "High Wind Speeds",
         "Wind Damage Estimates",
-        "Snow total (Inches)",
-        "Snowfall total in Inches (Average of several measurements)",
+        "Snow total",
+        "Snowfall total",
         "What kind of flooding was observed"
-    ]);
-    var remarks = valueFor(row, ["Remarks", "Additional Remarks", "Notes", "Damage Description", "Other"]);
+    ], true);
+    var remarks = valueFor(row, ["Remarks", "Additional Remarks", "Notes", "Damage Description", "Other"], true);
 
     return {
         id: "report-" + index,
@@ -569,25 +590,25 @@ function normalizeReport(row, index) {
         rawType: rawType,
         observedAt: observedAt,
         timeLabel: observedAt ? formatDateValue(observedAt) : "Time not provided",
-        county: valueFor(row, ["County"]),
+        county: valueFor(row, ["County"], true),
         location: location,
         magnitude: magnitude,
         summary: magnitude || remarks,
         remarks: remarks,
-        callsign: valueFor(row, ["Amateur Radio Callsign", "Callsign", "Reporter Callsign"]),
-        status: valueFor(row, ["Status", "Map Status", "Verification Status"]) || "new",
-        mapVisible: isMapVisible(valueFor(row, ["Map Visible?", "Visible"]))
+        callsign: valueFor(row, ["Amateur Radio Callsign", "Callsign", "Reporter Callsign"], true),
+        status: valueFor(row, ["Status", "Map Status", "Verification Status"], true) || "new",
+        mapVisible: isMapVisible(valueFor(row, ["Map Visible?", "Visible"], true))
     };
 }
 
 function getReportType(rawType, row) {
     var haystack = [
         rawType,
-        valueFor(row, ["What kind of flooding was observed"]),
-        valueFor(row, ["Electric Provider", "Electric Provider in outage area"]),
-        valueFor(row, ["Hail Size"]),
-        valueFor(row, ["High Wind Speeds (Estimated)", "Wind Damage Estimates"]),
-        valueFor(row, ["Snow total (Inches)"])
+        valueFor(row, ["What kind of flooding was observed"], true),
+        valueFor(row, ["Electric Provider", "Electric Provider in outage area"], true),
+        valueFor(row, ["Hail Size"], true),
+        valueFor(row, ["High Wind Speeds", "Wind Damage Estimates"], true),
+        valueFor(row, ["Snow total"], true)
     ].join(" ").toLowerCase();
 
     for (var i = 0; i < REPORT_TYPES.length; i++) {
@@ -634,11 +655,24 @@ function isMapVisible(value) {
     return ["false", "no", "n", "0", "hidden", "hide"].indexOf(value) === -1;
 }
 
-function valueFor(row, names) {
+function valueFor(row, names, allowPartial) {
     for (var i = 0; i < names.length; i++) {
         var normalized = normalizeHeader(names[i]);
         if (row[normalized]) return row[normalized];
     }
+
+    if (allowPartial) {
+        var headers = Object.keys(row);
+        for (var j = 0; j < names.length; j++) {
+            var target = normalizeHeader(names[j]);
+            for (var k = 0; k < headers.length; k++) {
+                if (headers[k].indexOf(target) !== -1 || target.indexOf(headers[k]) !== -1) {
+                    return row[headers[k]];
+                }
+            }
+        }
+    }
+
     return "";
 }
 
@@ -758,7 +792,19 @@ function getAlertPriority(event) {
 
 function getSheetUrl() {
     var params = new URLSearchParams(window.location.search);
-    return params.get("sheet") || GOOGLE_SHEET_CSV_URL;
+    return toCsvUrl(params.get("sheet") || GOOGLE_SHEET_CSV_URL);
+}
+
+function toCsvUrl(url) {
+    if (!url) return "";
+    if (url.indexOf("docs.google.com/spreadsheets/d/") === -1) return url;
+    if (url.indexOf("/gviz/tq") !== -1 || url.indexOf("output=csv") !== -1) return url;
+
+    var match = url.match(/\/spreadsheets\/d\/([^/]+)/);
+    if (!match) return url;
+    var gidMatch = url.match(/[?&#]gid=(\d+)/);
+    var gid = gidMatch ? gidMatch[1] : "0";
+    return "https://docs.google.com/spreadsheets/d/" + match[1] + "/gviz/tq?tqx=out:csv&gid=" + gid;
 }
 
 function setStatus(message, isError) {
