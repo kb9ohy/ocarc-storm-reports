@@ -73,22 +73,39 @@ body {
     min-height: 0;
     flex: 1;
     position: relative;
-    background-color: #d8edf4;
+    background-color: #edf4e8;
     background-image:
-        linear-gradient(rgba(18, 59, 102, 0.12) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(18, 59, 102, 0.12) 1px, transparent 1px);
+        linear-gradient(rgba(74, 101, 66, 0.10) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(74, 101, 66, 0.10) 1px, transparent 1px);
     background-size: 56px 56px;
+}
+
+.localBasemap {
+    position: absolute;
+    inset: 0;
+    z-index: 250;
+    pointer-events: none;
+}
+
+.localBasemap svg {
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 
 .mapContextOverlay {
     position: absolute;
     inset: 0;
-    z-index: 450;
+    z-index: 300;
     pointer-events: none;
     background-image:
-        linear-gradient(rgba(18, 59, 102, 0.18) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(18, 59, 102, 0.18) 1px, transparent 1px);
+        linear-gradient(rgba(74, 101, 66, 0.10) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(74, 101, 66, 0.10) 1px, transparent 1px);
     background-size: 72px 72px;
+}
+
+.leaflet-tile-pane {
+    display: none;
 }
 
 .mapContextChip {
@@ -459,8 +476,11 @@ REPORT_TYPES.forEach(function(type) {
 
 /******** MAP ********/
 var map = L.map("map").setView([38.55, -86.6], 9);
+map.createPane("localMapPane");
+map.getPane("localMapPane").style.zIndex = 500;
+map.getPane("localMapPane").style.pointerEvents = "none";
 map.createPane("referencePane");
-map.getPane("referencePane").style.zIndex = 450;
+map.getPane("referencePane").style.zIndex = 550;
 map.getPane("referencePane").style.pointerEvents = "none";
 
 var osmTiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -505,6 +525,7 @@ var countyLayer = L.geoJSON(null, {
 var nwsLayer = L.layerGroup().addTo(map);
 var reportsLayer = L.layerGroup().addTo(map);
 var referenceLayer = L.layerGroup().addTo(map);
+drawLocalBasemap();
 drawMapContextOverlay();
 drawReferenceCounties();
 
@@ -989,6 +1010,38 @@ function updateCountyStyles() {
             layer.bindTooltip(COUNTY_NAMES[code] || code, { sticky: true });
         }
     });
+}
+
+function drawLocalBasemap() {
+    var basemap = document.createElement("div");
+    basemap.className = "localBasemap";
+    basemap.setAttribute("aria-hidden", "true");
+    basemap.innerHTML = [
+        '<svg viewBox="0 0 1000 760" preserveAspectRatio="none" role="img">',
+        '<rect width="1000" height="760" fill="#edf4e8" opacity="0.58"/>',
+        '<path d="M-20 642 C95 592 160 660 255 621 C356 580 408 653 520 610 C628 568 695 624 793 575 C889 526 947 571 1020 528 L1020 780 L-20 780 Z" fill="#b8d3df" opacity="0.78"/>',
+        '<path d="M122 520 L320 420 L404 548 L262 686 Z" fill="#dfeecf" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
+        '<path d="M320 420 L505 383 L572 516 L404 548 Z" fill="#d7e9c9" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
+        '<path d="M505 383 L706 360 L746 492 L572 516 Z" fill="#e6f0d6" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
+        '<path d="M358 138 L563 122 L505 383 L320 420 Z" fill="#e3edd0" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
+        '<path d="M563 122 L778 145 L706 360 L505 383 Z" fill="#dcebcf" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
+        '<path d="M572 516 L746 492 L858 600 L700 704 L594 650 Z" fill="#e9f2dc" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
+        '<path d="M244 604 C345 548 465 520 574 503 C665 488 766 448 870 392" fill="none" stroke="#f6f2e8" stroke-width="13" stroke-linecap="round" opacity="0.86"/>',
+        '<path d="M244 604 C345 548 465 520 574 503 C665 488 766 448 870 392" fill="none" stroke="#c49a5d" stroke-width="3" stroke-linecap="round" stroke-dasharray="12 10" opacity="0.92"/>',
+        '<path d="M454 120 C430 242 414 344 404 548" fill="none" stroke="#f6f2e8" stroke-width="11" stroke-linecap="round" opacity="0.86"/>',
+        '<path d="M454 120 C430 242 414 344 404 548" fill="none" stroke="#9b835a" stroke-width="2.5" stroke-linecap="round" opacity="0.92"/>',
+        '<path d="M702 145 C684 270 671 371 700 704" fill="none" stroke="#f6f2e8" stroke-width="10" stroke-linecap="round" opacity="0.86"/>',
+        '<path d="M702 145 C684 270 671 371 700 704" fill="none" stroke="#9b835a" stroke-width="2.5" stroke-linecap="round" opacity="0.92"/>',
+        '<text x="232" y="600" fill="#4a5d42" font-size="20" font-weight="700">Dubois</text>',
+        '<text x="397" y="462" fill="#4a5d42" font-size="20" font-weight="700">Orange</text>',
+        '<text x="603" y="438" fill="#4a5d42" font-size="20" font-weight="700">Washington</text>',
+        '<text x="449" y="246" fill="#4a5d42" font-size="20" font-weight="700">Lawrence</text>',
+        '<text x="377" y="634" fill="#4a5d42" font-size="20" font-weight="700">Crawford</text>',
+        '<text x="700" y="618" fill="#4a5d42" font-size="20" font-weight="700">Floyd</text>',
+        '<text x="814" y="620" fill="#436b82" font-size="18" font-weight="700">Ohio River</text>',
+        '</svg>'
+    ].join("");
+    document.getElementById("map").appendChild(basemap);
 }
 
 function drawMapContextOverlay() {
