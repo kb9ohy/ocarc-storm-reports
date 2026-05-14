@@ -13,13 +13,13 @@ This is a static Leaflet map for OCARC severe weather operations. It can show:
 
 ## Google Sheet Setup
 
-The map can use a normal Google Sheet share URL, a published CSV URL, or a Google Sheets `gviz` CSV URL.
+The map is currently configured to read the OCARC response sheet through its Google Sheets `gviz` CSV URL. It can also use a normal Google Sheet share URL, a published CSV URL, or another Google Sheets `gviz` CSV URL.
 
 1. Open the response spreadsheet connected to the Google Form.
 2. Choose `File` -> `Share` -> `Publish to web`.
 3. Publish the response sheet as CSV.
 4. Copy the CSV URL.
-5. Paste it into `GOOGLE_SHEET_CSV_URL` in `stormmap.html`.
+5. Paste it into `GOOGLE_SHEET_CSV_URL` in `stormmap.html` if the response sheet changes.
 
 If the sheet is shared publicly as "Anyone with the link can view," you can also paste the normal `/edit?usp=sharing` URL. The map will convert it to the CSV endpoint.
 
@@ -48,6 +48,7 @@ Latitude
 Longitude
 Location Description
 County
+Weather Event
 Type of WX Event
 Hail Size
 High Wind Speeds (Estimated)
