@@ -240,6 +240,70 @@ body {
     font-weight: 700;
 }
 
+.setupActions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.secondaryButton {
+    min-height: 32px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: #344054;
+    background: #ffffff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+}
+
+.secondaryButton:hover,
+.secondaryButton:focus {
+    background: #f8fafc;
+}
+
+.countyList {
+    display: grid;
+    gap: 7px;
+    max-height: 220px;
+    overflow: auto;
+    padding-right: 2px;
+}
+
+.countyCheck {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fbfcfe;
+    font-size: 13px;
+}
+
+.countyCheckMain {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.countyCode {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.stateList {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    margin-bottom: 12px;
+    max-height: 180px;
+    overflow: auto;
+}
+
 .legendItem {
     display: flex;
     gap: 8px;
@@ -376,6 +440,25 @@ body {
         </section>
 
         <section class="panelSection">
+            <h2>County Setup</h2>
+            <div class="field">
+                <label>State Focus</label>
+                <div class="stateList" id="stateList"></div>
+            </div>
+            <div class="field">
+                <label for="countySearch">Find County</label>
+                <input id="countySearch" type="search" placeholder="Search by county or code">
+            </div>
+            <div class="setupActions">
+                <button class="secondaryButton" id="selectAllCounties" type="button">Select All</button>
+                <button class="secondaryButton" id="clearCounties" type="button">Clear</button>
+                <button class="secondaryButton" id="resetCounties" type="button">Reset</button>
+            </div>
+            <div class="emptyState" id="countySelectionSummary">Loading counties...</div>
+            <div class="countyList" id="countyList"></div>
+        </section>
+
+        <section class="panelSection">
             <h2>Latest Reports</h2>
             <div class="emptyState" id="reportCount">No reports loaded yet.</div>
         </section>
@@ -400,28 +483,48 @@ var REPORT_TYPES = [
     { key: "funnel", label: "Funnel", icon: "icons/funnel.png", color: "#be123c", aliases: ["funnel", "rotation", "wall cloud"] }
 ];
 
-var TARGET_COUNTIES = ["INC117", "INC037", "INC175", "INC025", "INC043", "INC093"];
-var COUNTY_NAMES = {
-    INC117: "Orange",
-    INC037: "Dubois",
-    INC175: "Washington",
-    INC025: "Crawford",
-    INC043: "Floyd",
-    INC093: "Lawrence"
-};
-var TARGET_SAME_TO_COUNTY = {
-    "018117": "INC117",
-    "018037": "INC037",
-    "018175": "INC175",
-    "018025": "INC025",
-    "018043": "INC043",
-    "018093": "INC093"
+var DEFAULT_TARGET_COUNTIES = ["INC117", "INC037", "INC175", "INC025", "INC043", "INC093"];
+var DEFAULT_TARGET_STATES = ["IN"];
+var COUNTY_SELECTION_STORAGE_KEY = "ocarcSelectedCounties";
+var STATE_SELECTION_STORAGE_KEY = "ocarcSelectedStates";
+var STATE_BY_FIPS = {
+    "01": { abbr: "AL", name: "Alabama" }, "02": { abbr: "AK", name: "Alaska" },
+    "04": { abbr: "AZ", name: "Arizona" }, "05": { abbr: "AR", name: "Arkansas" },
+    "06": { abbr: "CA", name: "California" }, "08": { abbr: "CO", name: "Colorado" },
+    "09": { abbr: "CT", name: "Connecticut" }, "10": { abbr: "DE", name: "Delaware" },
+    "11": { abbr: "DC", name: "District of Columbia" }, "12": { abbr: "FL", name: "Florida" },
+    "13": { abbr: "GA", name: "Georgia" }, "15": { abbr: "HI", name: "Hawaii" },
+    "16": { abbr: "ID", name: "Idaho" }, "17": { abbr: "IL", name: "Illinois" },
+    "18": { abbr: "IN", name: "Indiana" }, "19": { abbr: "IA", name: "Iowa" },
+    "20": { abbr: "KS", name: "Kansas" }, "21": { abbr: "KY", name: "Kentucky" },
+    "22": { abbr: "LA", name: "Louisiana" }, "23": { abbr: "ME", name: "Maine" },
+    "24": { abbr: "MD", name: "Maryland" }, "25": { abbr: "MA", name: "Massachusetts" },
+    "26": { abbr: "MI", name: "Michigan" }, "27": { abbr: "MN", name: "Minnesota" },
+    "28": { abbr: "MS", name: "Mississippi" }, "29": { abbr: "MO", name: "Missouri" },
+    "30": { abbr: "MT", name: "Montana" }, "31": { abbr: "NE", name: "Nebraska" },
+    "32": { abbr: "NV", name: "Nevada" }, "33": { abbr: "NH", name: "New Hampshire" },
+    "34": { abbr: "NJ", name: "New Jersey" }, "35": { abbr: "NM", name: "New Mexico" },
+    "36": { abbr: "NY", name: "New York" }, "37": { abbr: "NC", name: "North Carolina" },
+    "38": { abbr: "ND", name: "North Dakota" }, "39": { abbr: "OH", name: "Ohio" },
+    "40": { abbr: "OK", name: "Oklahoma" }, "41": { abbr: "OR", name: "Oregon" },
+    "42": { abbr: "PA", name: "Pennsylvania" }, "44": { abbr: "RI", name: "Rhode Island" },
+    "45": { abbr: "SC", name: "South Carolina" }, "46": { abbr: "SD", name: "South Dakota" },
+    "47": { abbr: "TN", name: "Tennessee" }, "48": { abbr: "TX", name: "Texas" },
+    "49": { abbr: "UT", name: "Utah" }, "50": { abbr: "VT", name: "Vermont" },
+    "51": { abbr: "VA", name: "Virginia" }, "53": { abbr: "WA", name: "Washington" },
+    "54": { abbr: "WV", name: "West Virginia" }, "55": { abbr: "WI", name: "Wisconsin" },
+    "56": { abbr: "WY", name: "Wyoming" }
 };
 
 /******** STATE ********/
 var allReports = [];
 var reportMarkers = [];
 var countyAlertStatus = {};
+var countyCatalog = [];
+var countyNameByCode = {};
+var sameToCountyCode = {};
+var selectedStateCodes = loadSelectedStateCodes();
+var selectedCountyCodes = loadSelectedCountyCodes();
 var selectedTypes = {};
 var skippedReports = [];
 var hasFitToReports = false;
@@ -492,6 +595,13 @@ var reportsList = document.getElementById("reportsList");
 var timeFilter = document.getElementById("timeFilter");
 var typeFilters = document.getElementById("typeFilters");
 var refreshButton = document.getElementById("refreshButton");
+var countySearch = document.getElementById("countySearch");
+var selectAllCounties = document.getElementById("selectAllCounties");
+var clearCounties = document.getElementById("clearCounties");
+var resetCounties = document.getElementById("resetCounties");
+var stateList = document.getElementById("stateList");
+var countySelectionSummary = document.getElementById("countySelectionSummary");
+var countyList = document.getElementById("countyList");
 var debugSheet = document.getElementById("debugSheet");
 var debugRows = document.getElementById("debugRows");
 var debugMapped = document.getElementById("debugMapped");
@@ -501,11 +611,27 @@ var debugTiles = document.getElementById("debugTiles");
 var debugMessage = document.getElementById("debugMessage");
 
 buildTypeFilters();
+buildStateFilters();
 
 timeFilter.addEventListener("change", renderReports);
 refreshButton.addEventListener("click", function() {
     hasFitToReports = false;
     loadAllData();
+});
+countySearch.addEventListener("input", renderCountySetup);
+selectAllCounties.addEventListener("click", function() {
+    setSelectedCountyCodes(countyCatalog.filter(function(county) {
+        return selectedStateCodes.indexOf(county.state) !== -1;
+    }).map(function(county) {
+        return county.code;
+    }));
+});
+clearCounties.addEventListener("click", function() {
+    setSelectedCountyCodes([]);
+});
+resetCounties.addEventListener("click", function() {
+    setSelectedStateCodes(DEFAULT_TARGET_STATES.slice());
+    setSelectedCountyCodes(DEFAULT_TARGET_COUNTIES.slice());
 });
 updateDebugPanel();
 
@@ -517,6 +643,12 @@ fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties
     })
     .then(function(data) {
         countyLayer.addData(data);
+        buildCountyCatalog(data.features || []);
+        selectedCountyCodes = selectedCountyCodes.filter(function(code) {
+            return countyNameByCode[code];
+        });
+        saveSelectedCountyCodes();
+        renderCountySetup();
         updateCountyStyles();
     })
     .catch(function(error) {
@@ -554,18 +686,26 @@ function loadAllData() {
 }
 
 function loadNWSAlerts() {
-    return fetch("https://api.weather.gov/alerts/active?area=IN", {
-        headers: { "Accept": "application/geo+json" }
-    })
-    .then(function(response) {
-        if (!response.ok) throw new Error("NWS alerts unavailable");
-        return response.json();
-    })
-    .then(function(data) {
+    var requests = selectedStateCodes.map(function(stateCode) {
+        return fetch("https://api.weather.gov/alerts/active?area=" + stateCode, {
+            headers: { "Accept": "application/geo+json" }
+        }).then(function(response) {
+            if (!response.ok) throw new Error("NWS alerts unavailable");
+            return response.json();
+        });
+    });
+
+    return Promise.all(requests)
+    .then(function(results) {
         nwsLayer.clearLayers();
         countyAlertStatus = {};
 
-        data.features.forEach(function(feature) {
+        var features = [];
+        results.forEach(function(data) {
+            features = features.concat(data.features || []);
+        });
+
+        features.forEach(function(feature) {
             var props = feature.properties || {};
             var ugc = props.geocode && props.geocode.UGC ? props.geocode.UGC : [];
             var same = props.geocode && props.geocode.SAME ? props.geocode.SAME : [];
@@ -951,44 +1091,185 @@ function getReportIcon(type) {
 function updateCountyStyles() {
     countyLayer.eachLayer(function(layer) {
         var fips = layer.feature.id;
-        var code = "IN" + fips.substring(2);
+        var state = STATE_BY_FIPS[fips.substring(0, 2)];
+        var code = state ? state.abbr + "C" + fips.substring(2) : "";
         var statusObj = countyAlertStatus[code];
         var status = statusObj ? statusObj.level : null;
-        var style = { color: "#9aa6b2", weight: 1, fillColor: "#f8fafc", fillOpacity: 0.35 };
+        var isSelectedState = state && selectedStateCodes.indexOf(state.abbr) !== -1;
+        var isSelectedCounty = selectedCountyCodes.indexOf(code) !== -1;
+        var style = { color: "#d0d5dd", weight: 0.5, fillOpacity: 0 };
 
-        if (TARGET_COUNTIES.indexOf(code) !== -1) {
-            style.color = "#123b66";
-            style.weight = 2;
-            style.fillColor = "#dbeafe";
-            style.fillOpacity = 0.45;
+        if (isSelectedState) {
+            style.color = "#98a2b3";
+            style.weight = 0.8;
         }
 
-        if (status) {
-            var severityStyle = getSeverityStyle(status);
-            style.fillColor = severityStyle.fillColor;
-            style.fillOpacity = severityStyle.fillOpacity;
+        if (isSelectedCounty) {
+            style.color = "#123b66";
+            style.weight = 2;
         }
 
         layer.setStyle(style);
-        if (TARGET_COUNTIES.indexOf(code) !== -1) {
-            layer.bindTooltip(COUNTY_NAMES[code] || code, { sticky: true });
+        if (isSelectedCounty) {
+            layer.bindTooltip(countyNameByCode[code] || code, { sticky: true });
+        } else {
+            layer.unbindTooltip();
         }
     });
 }
 
 function getMatchedTargetCounties(ugcCodes, sameCodes) {
     var matched = ugcCodes.filter(function(code) {
-        return TARGET_COUNTIES.indexOf(code) !== -1;
+        return selectedCountyCodes.indexOf(code) !== -1;
     });
 
     sameCodes.forEach(function(code) {
-        var countyCode = TARGET_SAME_TO_COUNTY[code];
+        var countyCode = sameToCountyCode[code];
         if (countyCode && matched.indexOf(countyCode) === -1) {
             matched.push(countyCode);
         }
     });
 
     return matched;
+}
+
+function buildCountyCatalog(features) {
+    countyCatalog = features.map(function(feature) {
+        var fips = String(feature.id);
+        var state = STATE_BY_FIPS[fips.substring(0, 2)];
+        if (!state) return null;
+        var code = state.abbr + "C" + fips.substring(2);
+        var name = feature.properties && feature.properties.NAME ? feature.properties.NAME : code;
+        var same = "0" + fips;
+        countyNameByCode[code] = name;
+        sameToCountyCode[same] = code;
+        return { code: code, name: name, same: same, state: state.abbr, stateName: state.name };
+    }).filter(Boolean).sort(function(a, b) {
+        if (a.stateName !== b.stateName) return a.stateName.localeCompare(b.stateName);
+        return a.name.localeCompare(b.name);
+    });
+}
+
+function renderCountySetup() {
+    var query = String(countySearch.value || "").trim().toLowerCase();
+    countyList.innerHTML = "";
+
+    var visibleCounties = countyCatalog.filter(function(county) {
+        var inSelectedState = selectedStateCodes.indexOf(county.state) !== -1;
+        return inSelectedState && (!query ||
+            county.name.toLowerCase().indexOf(query) !== -1 ||
+            county.code.toLowerCase().indexOf(query) !== -1 ||
+            county.same.indexOf(query) !== -1);
+    });
+
+    countySelectionSummary.textContent = selectedCountyCodes.length + " counties selected";
+
+    visibleCounties.forEach(function(county) {
+        var label = document.createElement("label");
+        label.className = "countyCheck";
+        label.innerHTML = [
+            '<span class="countyCheckMain">',
+            '<input type="checkbox" value="' + escapeHtml(county.code) + '"' +
+                (selectedCountyCodes.indexOf(county.code) !== -1 ? " checked" : "") + ">",
+            '<span>' + escapeHtml(county.name + ", " + county.state) + '</span>',
+            '</span>',
+            '<span class="countyCode">' + escapeHtml(county.code) + '</span>'
+        ].join("");
+        label.querySelector("input").addEventListener("change", function(event) {
+            toggleCountySelection(county.code, event.target.checked);
+        });
+        countyList.appendChild(label);
+    });
+}
+
+function toggleCountySelection(code, isSelected) {
+    var next = selectedCountyCodes.slice();
+    var index = next.indexOf(code);
+    if (isSelected && index === -1) next.push(code);
+    if (!isSelected && index !== -1) next.splice(index, 1);
+    setSelectedCountyCodes(next);
+}
+
+function setSelectedCountyCodes(codes) {
+    selectedCountyCodes = countyCatalog.length ? codes.filter(function(code) {
+        return countyNameByCode[code];
+    }) : codes.slice();
+    saveSelectedCountyCodes();
+    renderCountySetup();
+    updateCountyStyles();
+    loadNWSAlerts();
+}
+
+function buildStateFilters() {
+    Object.keys(STATE_BY_FIPS).map(function(fips) {
+        return STATE_BY_FIPS[fips];
+    }).sort(function(a, b) {
+        return a.name.localeCompare(b.name);
+    }).forEach(function(state) {
+        var label = document.createElement("label");
+        label.className = "filterCheck";
+        label.innerHTML = '<input type="checkbox" value="' + state.abbr + '"' +
+            (selectedStateCodes.indexOf(state.abbr) !== -1 ? " checked" : "") +
+            '> ' + escapeHtml(state.name);
+        label.querySelector("input").addEventListener("change", function(event) {
+            toggleStateSelection(state.abbr, event.target.checked);
+        });
+        stateList.appendChild(label);
+    });
+}
+
+function toggleStateSelection(stateCode, isSelected) {
+    var next = selectedStateCodes.slice();
+    var index = next.indexOf(stateCode);
+    if (isSelected && index === -1) next.push(stateCode);
+    if (!isSelected && index !== -1) next.splice(index, 1);
+    if (next.length === 0) return;
+    setSelectedStateCodes(next);
+}
+
+function setSelectedStateCodes(codes) {
+    selectedStateCodes = codes.slice();
+    selectedCountyCodes = selectedCountyCodes.filter(function(code) {
+        return selectedStateCodes.indexOf(code.substring(0, 2)) !== -1;
+    });
+    saveSelectedStateCodes();
+    saveSelectedCountyCodes();
+    updateStateFilters();
+    renderCountySetup();
+    updateCountyStyles();
+    loadNWSAlerts();
+}
+
+function updateStateFilters() {
+    stateList.querySelectorAll("input").forEach(function(input) {
+        input.checked = selectedStateCodes.indexOf(input.value) !== -1;
+    });
+}
+
+function loadSelectedCountyCodes() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(COUNTY_SELECTION_STORAGE_KEY) || "null");
+        return Array.isArray(stored) ? stored : DEFAULT_TARGET_COUNTIES.slice();
+    } catch (error) {
+        return DEFAULT_TARGET_COUNTIES.slice();
+    }
+}
+
+function saveSelectedCountyCodes() {
+    localStorage.setItem(COUNTY_SELECTION_STORAGE_KEY, JSON.stringify(selectedCountyCodes));
+}
+
+function loadSelectedStateCodes() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(STATE_SELECTION_STORAGE_KEY) || "null");
+        return Array.isArray(stored) && stored.length ? stored : DEFAULT_TARGET_STATES.slice();
+    } catch (error) {
+        return DEFAULT_TARGET_STATES.slice();
+    }
+}
+
+function saveSelectedStateCodes() {
+    localStorage.setItem(STATE_SELECTION_STORAGE_KEY, JSON.stringify(selectedStateCodes));
 }
 
 function getSeverityLevel(severity) {
