@@ -275,6 +275,29 @@ body {
     color: var(--danger);
 }
 
+.highSeverityPolygon {
+    animation: highSeverityPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes highSeverityPulse {
+    0%,
+    100% {
+        stroke-opacity: 1;
+        stroke-width: 2;
+    }
+
+    50% {
+        stroke-opacity: 0.45;
+        stroke-width: 3;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .highSeverityPolygon {
+        animation: none;
+    }
+}
+
 @media (max-width: 860px) {
     #app {
         grid-template-columns: 1fr;
@@ -562,7 +585,7 @@ function loadNWSAlerts() {
 
             if (feature.geometry) {
                 var severityStyle = getSeverityStyle(level);
-                L.geoJSON(feature, {
+                var alertLayer = L.geoJSON(feature, {
                     style: {
                         color: severityStyle.color,
                         weight: 2,
@@ -572,6 +595,14 @@ function loadNWSAlerts() {
                 })
                 .bindPopup(buildAlertPopup(props))
                 .addTo(nwsLayer);
+
+                if (level === "high") {
+                    alertLayer.eachLayer(function(layer) {
+                        if (layer._path) {
+                            layer._path.classList.add("highSeverityPolygon");
+                        }
+                    });
+                }
             }
         });
 
