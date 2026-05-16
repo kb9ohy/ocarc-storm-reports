@@ -72,55 +72,6 @@ body {
 #map {
     min-height: 0;
     flex: 1;
-    position: relative;
-    background-color: #edf4e8;
-    background-image:
-        linear-gradient(rgba(74, 101, 66, 0.10) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(74, 101, 66, 0.10) 1px, transparent 1px);
-    background-size: 56px 56px;
-}
-
-.localBasemap {
-    position: absolute;
-    inset: 0;
-    z-index: 250;
-    pointer-events: none;
-}
-
-.localBasemap svg {
-    width: 100%;
-    height: 100%;
-    display: block;
-}
-
-.mapContextOverlay {
-    position: absolute;
-    inset: 0;
-    z-index: 300;
-    pointer-events: none;
-    background-image:
-        linear-gradient(rgba(74, 101, 66, 0.10) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(74, 101, 66, 0.10) 1px, transparent 1px);
-    background-size: 72px 72px;
-}
-
-.leaflet-tile-pane {
-    display: none;
-}
-
-.mapContextChip {
-    position: absolute;
-    min-width: 92px;
-    padding: 5px 9px;
-    transform: translate(-50%, -50%);
-    border: 1px solid rgba(18, 59, 102, 0.35);
-    border-radius: 999px;
-    color: #123b66;
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow: 0 1px 4px rgba(16, 24, 40, 0.18);
-    font-size: 13px;
-    font-weight: 700;
-    text-align: center;
 }
 
 #sidebar {
@@ -266,22 +217,6 @@ body {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
     font-size: 13px;
-}
-
-.countyLabel {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    min-width: 88px;
-    min-height: 24px;
-    border: 1px solid rgba(18, 59, 102, 0.35);
-    border-radius: 999px;
-    color: #123b66;
-    background: rgba(255, 255, 255, 0.88);
-    box-shadow: 0 1px 4px rgba(16, 24, 40, 0.16);
-    font-size: 13px;
-    font-weight: 700;
-    text-shadow: 0 1px 0 #ffffff, 1px 0 0 #ffffff, 0 -1px 0 #ffffff, -1px 0 0 #ffffff;
 }
 
 .debugItem {
@@ -451,6 +386,14 @@ var COUNTY_NAMES = {
     INC043: "Floyd",
     INC093: "Lawrence"
 };
+var TARGET_SAME_TO_COUNTY = {
+    "018117": "INC117",
+    "018037": "INC037",
+    "018175": "INC175",
+    "018025": "INC025",
+    "018043": "INC043",
+    "018093": "INC093"
+};
 
 /******** STATE ********/
 var allReports = [];
@@ -476,12 +419,6 @@ REPORT_TYPES.forEach(function(type) {
 
 /******** MAP ********/
 var map = L.map("map").setView([38.55, -86.6], 9);
-map.createPane("localMapPane");
-map.getPane("localMapPane").style.zIndex = 500;
-map.getPane("localMapPane").style.pointerEvents = "none";
-map.createPane("referencePane");
-map.getPane("referencePane").style.zIndex = 550;
-map.getPane("referencePane").style.pointerEvents = "none";
 
 var osmTiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18,
@@ -524,10 +461,6 @@ var countyLayer = L.geoJSON(null, {
 
 var nwsLayer = L.layerGroup().addTo(map);
 var reportsLayer = L.layerGroup().addTo(map);
-var referenceLayer = L.layerGroup().addTo(map);
-drawLocalBasemap();
-drawMapContextOverlay();
-drawReferenceCounties();
 
 /******** DOM ********/
 var statusLine = document.getElementById("statusLine");
@@ -612,9 +545,8 @@ function loadNWSAlerts() {
         data.features.forEach(function(feature) {
             var props = feature.properties || {};
             var ugc = props.geocode && props.geocode.UGC ? props.geocode.UGC : [];
-            var matched = ugc.filter(function(code) {
-                return TARGET_COUNTIES.indexOf(code) !== -1;
-            });
+            var same = props.geocode && props.geocode.SAME ? props.geocode.SAME : [];
+            var matched = getMatchedTargetCounties(ugc, same);
 
             if (matched.length === 0) return;
 
@@ -1012,93 +944,19 @@ function updateCountyStyles() {
     });
 }
 
-function drawLocalBasemap() {
-    var basemap = document.createElement("div");
-    basemap.className = "localBasemap";
-    basemap.setAttribute("aria-hidden", "true");
-    basemap.innerHTML = [
-        '<svg viewBox="0 0 1000 760" preserveAspectRatio="none" role="img">',
-        '<rect width="1000" height="760" fill="#edf4e8" opacity="0.58"/>',
-        '<path d="M-20 642 C95 592 160 660 255 621 C356 580 408 653 520 610 C628 568 695 624 793 575 C889 526 947 571 1020 528 L1020 780 L-20 780 Z" fill="#b8d3df" opacity="0.78"/>',
-        '<path d="M122 520 L320 420 L404 548 L262 686 Z" fill="#dfeecf" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
-        '<path d="M320 420 L505 383 L572 516 L404 548 Z" fill="#d7e9c9" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
-        '<path d="M505 383 L706 360 L746 492 L572 516 Z" fill="#e6f0d6" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
-        '<path d="M358 138 L563 122 L505 383 L320 420 Z" fill="#e3edd0" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
-        '<path d="M563 122 L778 145 L706 360 L505 383 Z" fill="#dcebcf" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
-        '<path d="M572 516 L746 492 L858 600 L700 704 L594 650 Z" fill="#e9f2dc" fill-opacity="0.78" stroke="#597157" stroke-width="3"/>',
-        '<path d="M244 604 C345 548 465 520 574 503 C665 488 766 448 870 392" fill="none" stroke="#f6f2e8" stroke-width="13" stroke-linecap="round" opacity="0.86"/>',
-        '<path d="M244 604 C345 548 465 520 574 503 C665 488 766 448 870 392" fill="none" stroke="#c49a5d" stroke-width="3" stroke-linecap="round" stroke-dasharray="12 10" opacity="0.92"/>',
-        '<path d="M454 120 C430 242 414 344 404 548" fill="none" stroke="#f6f2e8" stroke-width="11" stroke-linecap="round" opacity="0.86"/>',
-        '<path d="M454 120 C430 242 414 344 404 548" fill="none" stroke="#9b835a" stroke-width="2.5" stroke-linecap="round" opacity="0.92"/>',
-        '<path d="M702 145 C684 270 671 371 700 704" fill="none" stroke="#f6f2e8" stroke-width="10" stroke-linecap="round" opacity="0.86"/>',
-        '<path d="M702 145 C684 270 671 371 700 704" fill="none" stroke="#9b835a" stroke-width="2.5" stroke-linecap="round" opacity="0.92"/>',
-        '<text x="232" y="600" fill="#4a5d42" font-size="20" font-weight="700">Dubois</text>',
-        '<text x="397" y="462" fill="#4a5d42" font-size="20" font-weight="700">Orange</text>',
-        '<text x="603" y="438" fill="#4a5d42" font-size="20" font-weight="700">Washington</text>',
-        '<text x="449" y="246" fill="#4a5d42" font-size="20" font-weight="700">Lawrence</text>',
-        '<text x="377" y="634" fill="#4a5d42" font-size="20" font-weight="700">Crawford</text>',
-        '<text x="700" y="618" fill="#4a5d42" font-size="20" font-weight="700">Floyd</text>',
-        '<text x="814" y="620" fill="#436b82" font-size="18" font-weight="700">Ohio River</text>',
-        '</svg>'
-    ].join("");
-    document.getElementById("map").appendChild(basemap);
-}
-
-function drawMapContextOverlay() {
-    var overlay = document.createElement("div");
-    overlay.className = "mapContextOverlay";
-    overlay.setAttribute("aria-hidden", "true");
-
-    [
-        { name: "Lawrence", left: "50%", top: "13%" },
-        { name: "Orange", left: "45%", top: "43%" },
-        { name: "Washington", left: "66%", top: "39%" },
-        { name: "Dubois", left: "24%", top: "58%" },
-        { name: "Crawford", left: "43%", top: "72%" },
-        { name: "Floyd", left: "72%", top: "70%" }
-    ].forEach(function(county) {
-        var chip = document.createElement("div");
-        chip.className = "mapContextChip";
-        chip.textContent = county.name;
-        chip.style.left = county.left;
-        chip.style.top = county.top;
-        overlay.appendChild(chip);
+function getMatchedTargetCounties(ugcCodes, sameCodes) {
+    var matched = ugcCodes.filter(function(code) {
+        return TARGET_COUNTIES.indexOf(code) !== -1;
     });
 
-    document.getElementById("map").appendChild(overlay);
-}
-
-function drawReferenceCounties() {
-    var references = [
-        { name: "Orange", center: [38.56, -86.48], bounds: [[38.42, -86.70], [38.72, -86.25]] },
-        { name: "Dubois", center: [38.37, -86.88], bounds: [[38.20, -87.10], [38.55, -86.60]] },
-        { name: "Washington", center: [38.60, -86.10], bounds: [[38.42, -86.32], [38.80, -85.82]] },
-        { name: "Crawford", center: [38.28, -86.45], bounds: [[38.10, -86.72], [38.42, -86.18]] },
-        { name: "Floyd", center: [38.32, -85.90], bounds: [[38.20, -86.03], [38.43, -85.73]] },
-        { name: "Lawrence", center: [38.84, -86.48], bounds: [[38.68, -86.75], [39.02, -86.20]] }
-    ];
-
-    references.forEach(function(county) {
-        L.rectangle(county.bounds, {
-            color: "#123b66",
-            weight: 2,
-            fillColor: "#d7e8f3",
-            fillOpacity: 0.35,
-            interactive: false,
-            pane: "referencePane"
-        }).addTo(referenceLayer);
-
-        L.marker(county.center, {
-            interactive: false,
-            pane: "referencePane",
-            icon: L.divIcon({
-                className: "countyLabel",
-                html: county.name,
-                iconSize: [90, 20],
-                iconAnchor: [45, 10]
-            })
-        }).addTo(referenceLayer);
+    sameCodes.forEach(function(code) {
+        var countyCode = TARGET_SAME_TO_COUNTY[code];
+        if (countyCode && matched.indexOf(countyCode) === -1) {
+            matched.push(countyCode);
+        }
     });
+
+    return matched;
 }
 
 function fitMapToReports(reports) {
