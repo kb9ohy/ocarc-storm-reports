@@ -106,7 +106,8 @@ body {
 }
 
 .field select,
-.field input {
+.field input,
+.actionButton {
     width: 100%;
     min-height: 36px;
     border: 1px solid var(--line);
@@ -114,6 +115,19 @@ body {
     padding: 7px 9px;
     font: inherit;
     background: #ffffff;
+}
+
+.actionButton {
+    color: #ffffff;
+    background: var(--brand);
+    border-color: var(--brand);
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.actionButton:hover,
+.actionButton:focus {
+    background: #0f3154;
 }
 
 .filterGrid {
@@ -198,6 +212,34 @@ body {
     font-size: 13px;
 }
 
+.debugGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.debugItem {
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fbfcfe;
+}
+
+.debugLabel {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.debugValue {
+    display: block;
+    margin-top: 2px;
+    font-weight: 700;
+}
+
 .legendItem {
     display: flex;
     gap: 8px;
@@ -231,6 +273,29 @@ body {
 
 .alertMessage {
     color: var(--danger);
+}
+
+.highSeverityPolygon {
+    animation: highSeverityPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes highSeverityPulse {
+    0%,
+    100% {
+        stroke-opacity: 1;
+        stroke-width: 2;
+    }
+
+    50% {
+        stroke-opacity: 0.45;
+        stroke-width: 3;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .highSeverityPolygon {
+        animation: none;
+    }
 }
 
 @media (max-width: 860px) {
@@ -271,6 +336,7 @@ body {
     <aside id="sidebar" aria-label="Storm report controls">
         <section class="panelSection">
             <h2>Report Filters</h2>
+            <button class="actionButton" id="refreshButton" type="button">Refresh Now</button>
             <div class="field">
                 <label for="timeFilter">Time Window</label>
                 <select id="timeFilter">
@@ -289,11 +355,24 @@ body {
         <section class="panelSection">
             <h2>Legend</h2>
             <div class="legend">
-                <div class="legendItem"><span class="legendSwatch" style="background:#ef4444"></span> Warning county</div>
-                <div class="legendItem"><span class="legendSwatch" style="background:#facc15"></span> Watch county</div>
-                <div class="legendItem"><span class="legendSwatch" style="background:#3b82f6"></span> Advisory county</div>
+                <div class="legendItem"><span class="legendSwatch" style="background:#ef4444"></span> High severity</div>
+                <div class="legendItem"><span class="legendSwatch" style="background:#facc15"></span> Moderate severity</div>
+                <div class="legendItem"><span class="legendSwatch" style="background:#3b82f6"></span> Low severity</div>
                 <div class="legendItem"><span class="legendSwatch" style="background:#ffffff"></span> Local report marker</div>
             </div>
+        </section>
+
+        <section class="panelSection">
+            <h2>Status</h2>
+            <div class="debugGrid" id="debugGrid">
+                <div class="debugItem"><span class="debugLabel">Sheet</span><span class="debugValue" id="debugSheet">Pending</span></div>
+                <div class="debugItem"><span class="debugLabel">Rows</span><span class="debugValue" id="debugRows">0</span></div>
+                <div class="debugItem"><span class="debugLabel">Mapped</span><span class="debugValue" id="debugMapped">0</span></div>
+                <div class="debugItem"><span class="debugLabel">Skipped</span><span class="debugValue" id="debugSkipped">0</span></div>
+                <div class="debugItem"><span class="debugLabel">Visible</span><span class="debugValue" id="debugVisible">0</span></div>
+                <div class="debugItem"><span class="debugLabel">Tile Errors</span><span class="debugValue" id="debugTiles">0</span></div>
+            </div>
+            <div class="emptyState" id="debugMessage"></div>
         </section>
 
         <section class="panelSection">
@@ -330,12 +409,33 @@ var COUNTY_NAMES = {
     INC043: "Floyd",
     INC093: "Lawrence"
 };
+var TARGET_SAME_TO_COUNTY = {
+    "018117": "INC117",
+    "018037": "INC037",
+    "018175": "INC175",
+    "018025": "INC025",
+    "018043": "INC043",
+    "018093": "INC093"
+};
 
 /******** STATE ********/
 var allReports = [];
 var reportMarkers = [];
 var countyAlertStatus = {};
 var selectedTypes = {};
+var skippedReports = [];
+var hasFitToReports = false;
+var tileErrorCount = 0;
+var tileLoadCount = 0;
+var fallbackTilesActive = false;
+var debugState = {
+    sheet: "Pending",
+    rows: 0,
+    mapped: 0,
+    skipped: 0,
+    visible: 0,
+    message: ""
+};
 REPORT_TYPES.forEach(function(type) {
     selectedTypes[type.key] = true;
 });
@@ -343,14 +443,42 @@ REPORT_TYPES.forEach(function(type) {
 /******** MAP ********/
 var map = L.map("map").setView([38.55, -86.6], 9);
 
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+var osmTiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 18,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 }).addTo(map);
 
+var fallbackTiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+});
+
+osmTiles.on("tileerror", function() {
+    tileErrorCount++;
+    if (tileErrorCount >= 3 && !fallbackTilesActive) {
+        fallbackTilesActive = true;
+        fallbackTiles.addTo(map);
+        setStatus("Base map tile issue detected. Switched to fallback tiles.", true);
+    }
+    updateDebugPanel();
+});
+osmTiles.on("tileload", function() {
+    tileLoadCount++;
+    updateDebugPanel();
+});
+
+fallbackTiles.on("tileerror", function() {
+    tileErrorCount++;
+    updateDebugPanel();
+});
+fallbackTiles.on("tileload", function() {
+    tileLoadCount++;
+    updateDebugPanel();
+});
+
 var countyLayer = L.geoJSON(null, {
     style: function() {
-        return { color: "#555", weight: 1, fillOpacity: 0.05 };
+        return { color: "#9aa6b2", weight: 1, fillColor: "#f8fafc", fillOpacity: 0.35 };
     }
 }).addTo(map);
 
@@ -363,10 +491,23 @@ var reportCount = document.getElementById("reportCount");
 var reportsList = document.getElementById("reportsList");
 var timeFilter = document.getElementById("timeFilter");
 var typeFilters = document.getElementById("typeFilters");
+var refreshButton = document.getElementById("refreshButton");
+var debugSheet = document.getElementById("debugSheet");
+var debugRows = document.getElementById("debugRows");
+var debugMapped = document.getElementById("debugMapped");
+var debugSkipped = document.getElementById("debugSkipped");
+var debugVisible = document.getElementById("debugVisible");
+var debugTiles = document.getElementById("debugTiles");
+var debugMessage = document.getElementById("debugMessage");
 
 buildTypeFilters();
 
 timeFilter.addEventListener("change", renderReports);
+refreshButton.addEventListener("click", function() {
+    hasFitToReports = false;
+    loadAllData();
+});
+updateDebugPanel();
 
 /******** LOADERS ********/
 fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json")
@@ -384,15 +525,31 @@ fetch("https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties
 
 loadAllData();
 setInterval(loadAllData, REFRESH_INTERVAL_MS);
+setTimeout(function() {
+    if (tileLoadCount === 0 && !fallbackTilesActive) {
+        fallbackTilesActive = true;
+        fallbackTiles.addTo(map);
+        debugState.message = "No base map tiles loaded. Showing fallback county reference overlay.";
+        updateDebugPanel();
+    }
+}, 3500);
 
 function loadAllData() {
     setStatus("Refreshing weather data...");
+    debugState.sheet = "Loading";
+    debugState.message = "";
+    updateDebugPanel();
     Promise.all([loadNWSAlerts(), loadSheetReports()])
         .then(function() {
             setStatus("Updated " + formatTime(new Date()) + " | " + allReports.length + " sheet reports");
+            debugState.sheet = "Loaded";
+            updateDebugPanel();
         })
         .catch(function(error) {
             setStatus("Update issue: " + error.message, true);
+            debugState.sheet = "Issue";
+            debugState.message = error.message;
+            updateDebugPanel();
         });
 }
 
@@ -411,18 +568,15 @@ function loadNWSAlerts() {
         data.features.forEach(function(feature) {
             var props = feature.properties || {};
             var ugc = props.geocode && props.geocode.UGC ? props.geocode.UGC : [];
-            var matched = ugc.filter(function(code) {
-                return TARGET_COUNTIES.indexOf(code) !== -1;
-            });
+            var same = props.geocode && props.geocode.SAME ? props.geocode.SAME : [];
+            var matched = getMatchedTargetCounties(ugc, same);
 
             if (matched.length === 0) return;
 
             var eventName = props.event || "";
-            var level = "advisory";
-            if (eventName.toLowerCase().indexOf("warning") !== -1) level = "warning";
-            else if (eventName.toLowerCase().indexOf("watch") !== -1) level = "watch";
+            var level = getSeverityLevel(props.severity);
 
-            var priority = getAlertPriority(eventName);
+            var priority = getSeverityPriority(level) * 10 + getAlertPriority(eventName);
             matched.forEach(function(code) {
                 if (!countyAlertStatus[code] || priority > countyAlertStatus[code].priority) {
                     countyAlertStatus[code] = { level: level, priority: priority };
@@ -430,11 +584,25 @@ function loadNWSAlerts() {
             });
 
             if (feature.geometry) {
-                L.geoJSON(feature, {
-                    style: { color: "#b42318", weight: 2, fillOpacity: 0.12 }
+                var severityStyle = getSeverityStyle(level);
+                var alertLayer = L.geoJSON(feature, {
+                    style: {
+                        color: severityStyle.color,
+                        weight: 2,
+                        fillColor: severityStyle.fillColor,
+                        fillOpacity: 0.22
+                    }
                 })
                 .bindPopup(buildAlertPopup(props))
                 .addTo(nwsLayer);
+
+                if (level === "high") {
+                    alertLayer.eachLayer(function(layer) {
+                        if (layer._path) {
+                            layer._path.classList.add("highSeverityPolygon");
+                        }
+                    });
+                }
             }
         });
 
@@ -446,7 +614,14 @@ function loadSheetReports() {
     var sheetUrl = getSheetUrl();
     if (!sheetUrl) {
         allReports = [];
+        skippedReports = [];
+        debugState.rows = 0;
+        debugState.mapped = 0;
+        debugState.skipped = 0;
+        debugState.sheet = "No URL";
+        debugState.message = "No Google Sheet URL is configured.";
         renderReports();
+        updateDebugPanel();
         return Promise.resolve();
     }
 
@@ -456,8 +631,15 @@ function loadSheetReports() {
             return response.text();
         })
         .then(function(csv) {
-            allReports = parseCsv(csv).map(normalizeReport).filter(Boolean);
+            var rows = parseCsv(csv);
+            skippedReports = [];
+            allReports = rows.map(normalizeReport).filter(Boolean);
+            debugState.rows = rows.length;
+            debugState.mapped = allReports.length;
+            debugState.skipped = skippedReports.length;
+            debugState.message = skippedReports.length ? skippedReports[0].reason : "";
             renderReports();
+            updateDebugPanel();
         });
 }
 
@@ -468,6 +650,8 @@ function renderReports() {
     reportsList.innerHTML = "";
 
     var visibleReports = getVisibleReports();
+    debugState.visible = visibleReports.length;
+    updateDebugPanel();
 
     reportCount.textContent = visibleReports.length + " visible of " + allReports.length + " loaded reports";
 
@@ -496,6 +680,8 @@ function renderReports() {
         });
         reportsList.appendChild(card);
     });
+
+    fitMapToReports(visibleReports);
 }
 
 function getVisibleReports() {
@@ -558,7 +744,10 @@ function normalizeReport(row, index) {
         valueFor(row, ["Coordinates", "GPS Location", "Report Location", "Address"], true)
     );
 
-    if (!latLon) return null;
+    if (!latLon) {
+        skippedReports.push({ index: index + 2, reason: "Row " + (index + 2) + " skipped: missing or invalid coordinates." });
+        return null;
+    }
 
     var rawType = valueFor(row, ["Weather Event", "Type of WX Event", "Type of Weather Event", "Report Type", "Event Type"], true);
     var type = getReportType(rawType, row);
@@ -631,10 +820,12 @@ function getReportType(rawType, row) {
 }
 
 function parseCoordinates(latValue, lonValue, combinedValue) {
-    var lat = Number(String(latValue || "").trim());
-    var lon = Number(String(lonValue || "").trim());
+    var latText = String(latValue || "").trim();
+    var lonText = String(lonValue || "").trim();
+    var lat = Number(latText);
+    var lon = Number(lonText);
 
-    if (isValidCoordinate(lat, lon)) return { lat: lat, lon: lon };
+    if (latText && lonText && isValidCoordinate(lat, lon)) return { lat: lat, lon: lon };
 
     var combined = String(combinedValue || "");
     var match = combined.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
@@ -763,23 +954,19 @@ function updateCountyStyles() {
         var code = "IN" + fips.substring(2);
         var statusObj = countyAlertStatus[code];
         var status = statusObj ? statusObj.level : null;
-        var style = { color: "#555", weight: 1, fillOpacity: 0.05 };
+        var style = { color: "#9aa6b2", weight: 1, fillColor: "#f8fafc", fillOpacity: 0.35 };
 
         if (TARGET_COUNTIES.indexOf(code) !== -1) {
             style.color = "#123b66";
             style.weight = 2;
-            style.fillOpacity = 0.08;
+            style.fillColor = "#dbeafe";
+            style.fillOpacity = 0.45;
         }
 
-        if (status === "warning") {
-            style.fillColor = "#ef4444";
-            style.fillOpacity = 0.35;
-        } else if (status === "watch") {
-            style.fillColor = "#facc15";
-            style.fillOpacity = 0.30;
-        } else if (status === "advisory") {
-            style.fillColor = "#3b82f6";
-            style.fillOpacity = 0.25;
+        if (status) {
+            var severityStyle = getSeverityStyle(status);
+            style.fillColor = severityStyle.fillColor;
+            style.fillOpacity = severityStyle.fillOpacity;
         }
 
         layer.setStyle(style);
@@ -787,6 +974,67 @@ function updateCountyStyles() {
             layer.bindTooltip(COUNTY_NAMES[code] || code, { sticky: true });
         }
     });
+}
+
+function getMatchedTargetCounties(ugcCodes, sameCodes) {
+    var matched = ugcCodes.filter(function(code) {
+        return TARGET_COUNTIES.indexOf(code) !== -1;
+    });
+
+    sameCodes.forEach(function(code) {
+        var countyCode = TARGET_SAME_TO_COUNTY[code];
+        if (countyCode && matched.indexOf(countyCode) === -1) {
+            matched.push(countyCode);
+        }
+    });
+
+    return matched;
+}
+
+function getSeverityLevel(severity) {
+    severity = String(severity || "").toLowerCase();
+    if (severity === "extreme" || severity === "severe") return "high";
+    if (severity === "moderate") return "moderate";
+    return "low";
+}
+
+function getSeverityStyle(level) {
+    if (level === "high") {
+        return { color: "#b42318", fillColor: "#ef4444", fillOpacity: 0.35 };
+    }
+    if (level === "moderate") {
+        return { color: "#a16207", fillColor: "#facc15", fillOpacity: 0.30 };
+    }
+    return { color: "#1d4ed8", fillColor: "#3b82f6", fillOpacity: 0.25 };
+}
+
+function getSeverityPriority(level) {
+    if (level === "high") return 3;
+    if (level === "moderate") return 2;
+    return 1;
+}
+
+function fitMapToReports(reports) {
+    if (hasFitToReports || reports.length === 0) return;
+    hasFitToReports = true;
+    if (reports.length === 1) {
+        map.setView([reports[0].lat, reports[0].lon], 9);
+        return;
+    }
+    var bounds = L.latLngBounds(reports.map(function(report) {
+        return [report.lat, report.lon];
+    }));
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+}
+
+function updateDebugPanel() {
+    debugSheet.textContent = debugState.sheet;
+    debugRows.textContent = debugState.rows;
+    debugMapped.textContent = debugState.mapped;
+    debugSkipped.textContent = debugState.skipped;
+    debugVisible.textContent = debugState.visible;
+    debugTiles.textContent = tileErrorCount + " / " + tileLoadCount;
+    debugMessage.textContent = debugState.message;
 }
 
 function getAlertPriority(event) {
