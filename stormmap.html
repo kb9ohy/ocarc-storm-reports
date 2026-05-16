@@ -785,10 +785,12 @@ function getReportType(rawType, row) {
 }
 
 function parseCoordinates(latValue, lonValue, combinedValue) {
-    var lat = Number(String(latValue || "").trim());
-    var lon = Number(String(lonValue || "").trim());
+    var latText = String(latValue || "").trim();
+    var lonText = String(lonValue || "").trim();
+    var lat = Number(latText);
+    var lon = Number(lonText);
 
-    if (isValidCoordinate(lat, lon)) return { lat: lat, lon: lon };
+    if (latText && lonText && isValidCoordinate(lat, lon)) return { lat: lat, lon: lon };
 
     var combined = String(combinedValue || "");
     var match = combined.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
