@@ -332,9 +332,9 @@ body {
         <section class="panelSection">
             <h2>Legend</h2>
             <div class="legend">
-                <div class="legendItem"><span class="legendSwatch" style="background:#ef4444"></span> Warning county</div>
-                <div class="legendItem"><span class="legendSwatch" style="background:#facc15"></span> Watch county</div>
-                <div class="legendItem"><span class="legendSwatch" style="background:#3b82f6"></span> Advisory county</div>
+                <div class="legendItem"><span class="legendSwatch" style="background:#ef4444"></span> High severity</div>
+                <div class="legendItem"><span class="legendSwatch" style="background:#facc15"></span> Moderate severity</div>
+                <div class="legendItem"><span class="legendSwatch" style="background:#3b82f6"></span> Low severity</div>
                 <div class="legendItem"><span class="legendSwatch" style="background:#ffffff"></span> Local report marker</div>
             </div>
         </section>
@@ -551,11 +551,9 @@ function loadNWSAlerts() {
             if (matched.length === 0) return;
 
             var eventName = props.event || "";
-            var level = "advisory";
-            if (eventName.toLowerCase().indexOf("warning") !== -1) level = "warning";
-            else if (eventName.toLowerCase().indexOf("watch") !== -1) level = "watch";
+            var level = getSeverityLevel(props.severity);
 
-            var priority = getAlertPriority(eventName);
+            var priority = getSeverityPriority(level) * 10 + getAlertPriority(eventName);
             matched.forEach(function(code) {
                 if (!countyAlertStatus[code] || priority > countyAlertStatus[code].priority) {
                     countyAlertStatus[code] = { level: level, priority: priority };
@@ -563,8 +561,14 @@ function loadNWSAlerts() {
             });
 
             if (feature.geometry) {
+                var severityStyle = getSeverityStyle(level);
                 L.geoJSON(feature, {
-                    style: { color: "#b42318", weight: 2, fillOpacity: 0.12 }
+                    style: {
+                        color: severityStyle.color,
+                        weight: 2,
+                        fillColor: severityStyle.fillColor,
+                        fillOpacity: 0.22
+                    }
                 })
                 .bindPopup(buildAlertPopup(props))
                 .addTo(nwsLayer);
@@ -928,15 +932,10 @@ function updateCountyStyles() {
             style.fillOpacity = 0.45;
         }
 
-        if (status === "warning") {
-            style.fillColor = "#ef4444";
-            style.fillOpacity = 0.35;
-        } else if (status === "watch") {
-            style.fillColor = "#facc15";
-            style.fillOpacity = 0.30;
-        } else if (status === "advisory") {
-            style.fillColor = "#3b82f6";
-            style.fillOpacity = 0.25;
+        if (status) {
+            var severityStyle = getSeverityStyle(status);
+            style.fillColor = severityStyle.fillColor;
+            style.fillOpacity = severityStyle.fillOpacity;
         }
 
         layer.setStyle(style);
@@ -959,6 +958,29 @@ function getMatchedTargetCounties(ugcCodes, sameCodes) {
     });
 
     return matched;
+}
+
+function getSeverityLevel(severity) {
+    severity = String(severity || "").toLowerCase();
+    if (severity === "extreme" || severity === "severe") return "high";
+    if (severity === "moderate") return "moderate";
+    return "low";
+}
+
+function getSeverityStyle(level) {
+    if (level === "high") {
+        return { color: "#b42318", fillColor: "#ef4444", fillOpacity: 0.35 };
+    }
+    if (level === "moderate") {
+        return { color: "#a16207", fillColor: "#facc15", fillOpacity: 0.30 };
+    }
+    return { color: "#1d4ed8", fillColor: "#3b82f6", fillOpacity: 0.25 };
+}
+
+function getSeverityPriority(level) {
+    if (level === "high") return 3;
+    if (level === "moderate") return 2;
+    return 1;
 }
 
 function fitMapToReports(reports) {
