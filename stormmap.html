@@ -297,11 +297,22 @@ body {
 
 .stateList {
     display: grid;
-    grid-template-columns: 1fr 1fr;
     gap: 7px;
     margin-bottom: 12px;
     max-height: 180px;
     overflow: auto;
+}
+
+.stateCheck {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fbfcfe;
+    font-size: 13px;
 }
 
 .legendItem {
@@ -1207,10 +1218,15 @@ function buildStateFilters() {
         return a.name.localeCompare(b.name);
     }).forEach(function(state) {
         var label = document.createElement("label");
-        label.className = "filterCheck";
-        label.innerHTML = '<input type="checkbox" value="' + state.abbr + '"' +
-            (selectedStateCodes.indexOf(state.abbr) !== -1 ? " checked" : "") +
-            '> ' + escapeHtml(state.name);
+        label.className = "stateCheck";
+        label.innerHTML = [
+            '<span class="countyCheckMain">',
+            '<input type="checkbox" value="' + state.abbr + '"' +
+                (selectedStateCodes.indexOf(state.abbr) !== -1 ? " checked" : "") + ">",
+            '<span>' + escapeHtml(state.name) + '</span>',
+            '</span>',
+            '<span class="countyCode">' + escapeHtml(state.abbr) + '</span>'
+        ].join("");
         label.querySelector("input").addEventListener("change", function(event) {
             toggleStateSelection(state.abbr, event.target.checked);
         });
