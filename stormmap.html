@@ -983,6 +983,12 @@ function parseCoordinates(latValue, lonValue, combinedValue) {
     if (!match) {
         match = combined.match(/lat(?:itude)?[:=\s]+(-?\d+(?:\.\d+)?).*?(?:lon|lng|longitude)[:=\s]+(-?\d+(?:\.\d+)?)/i);
     }
+    if (!match) {
+        match = combined.match(/(-?\d+(?:\.\d+)?)\s*°?\s+(-?\d+(?:\.\d+)?)\s*°?/);
+    }
+    if (!match) {
+        match = combined.match(/(-?\d+(?:\.\d+)?)[^\d-]+(-?\d+(?:\.\d+)?)/);
+    }
     if (!match) return null;
 
     lat = Number(match[1]);
@@ -1018,7 +1024,7 @@ function valueFor(row, names, allowPartial) {
             var target = normalizeHeader(names[j]);
             for (var k = 0; k < headers.length; k++) {
                 if (headers[k].indexOf(target) !== -1 || target.indexOf(headers[k]) !== -1) {
-                    return row[headers[k]];
+                    if (row[headers[k]]) return row[headers[k]];
                 }
             }
         }
