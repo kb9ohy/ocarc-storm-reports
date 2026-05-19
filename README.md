@@ -48,6 +48,7 @@ Latitude
 Longitude
 Location Description
 County
+Weather Event
 Type of WX Event
 Hail Size
 High Wind Speeds (Estimated)
