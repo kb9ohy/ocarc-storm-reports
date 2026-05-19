@@ -716,7 +716,9 @@ function loadNWSAlerts() {
             features = features.concat(data.features || []);
         });
 
-        features.forEach(function(feature) {
+        features.sort(function(a, b) {
+            return getAlertFeaturePriority(a) - getAlertFeaturePriority(b);
+        }).forEach(function(feature) {
             var props = feature.properties || {};
             var ugc = props.geocode && props.geocode.UGC ? props.geocode.UGC : [];
             var same = props.geocode && props.geocode.SAME ? props.geocode.SAME : [];
@@ -727,7 +729,7 @@ function loadNWSAlerts() {
             var eventName = props.event || "";
             var level = getSeverityLevel(props.severity);
 
-            var priority = getSeverityPriority(level) * 10 + getAlertPriority(eventName);
+            var priority = getAlertPriority(eventName) * 10 + getSeverityPriority(level);
             matched.forEach(function(code) {
                 if (!countyAlertStatus[code] || priority > countyAlertStatus[code].priority) {
                     countyAlertStatus[code] = { level: level, priority: priority };
@@ -754,6 +756,10 @@ function loadNWSAlerts() {
                         }
                     });
                 }
+
+                alertLayer.eachLayer(function(layer) {
+                    if (layer.bringToFront) layer.bringToFront();
+                });
             }
         });
 
@@ -1338,6 +1344,11 @@ function updateDebugPanel() {
     debugVisible.textContent = debugState.visible;
     debugTiles.textContent = tileErrorCount + " / " + tileLoadCount;
     debugMessage.textContent = debugState.message;
+}
+
+function getAlertFeaturePriority(feature) {
+    var props = feature && feature.properties ? feature.properties : {};
+    return getAlertPriority(props.event) * 10 + getSeverityPriority(getSeverityLevel(props.severity));
 }
 
 function getAlertPriority(event) {
