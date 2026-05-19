@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCARC Skywarn Reports</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+<div class="appShell">
+    <header class="topBar">
+        <div>
+            <h1>OCARC Skywarn Reports</h1>
+            <p id="systemStatus">Ready for reports</p>
+        </div>
+        <div class="topActions">
+            <button class="secondaryButton" id="exportButton" type="button">Export CSV</button>
+            <button class="primaryButton" id="refreshButton" type="button">Refresh</button>
+        </div>
+    </header>
+
+    <main class="workspace">
+        <section class="reportPanel" aria-label="Submit storm report">
+            <div class="panelHeader">
+                <h2>New Report</h2>
+                <span class="modePill">Field Entry</span>
+            </div>
+
+            <form id="reportForm">
+                <div class="formGrid">
+                    <label>
+                        <span>Callsign</span>
+                        <input id="callsign" name="callsign" autocomplete="off" required placeholder="KB9OHY">
+                    </label>
+                    <label>
+                        <span>Contact Number</span>
+                        <input id="contact" name="contact" inputmode="tel" autocomplete="tel" placeholder="xxx-xxx-xxxx">
+                    </label>
+                    <label>
+                        <span>County</span>
+                        <select id="county" name="county" required>
+                            <option value="">Select county</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Event Type</span>
+                        <select id="eventType" name="eventType" required>
+                            <option value="">Select event</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="locationRow">
+                    <label>
+                        <span>Latitude</span>
+                        <input id="latitude" name="latitude" inputmode="decimal" required placeholder="38.589301">
+                    </label>
+                    <label>
+                        <span>Longitude</span>
+                        <input id="longitude" name="longitude" inputmode="decimal" required placeholder="-86.593626">
+                    </label>
+                    <button class="secondaryButton locateButton" id="gpsButton" type="button">Use GPS</button>
+                </div>
+
+                <div class="dynamicFields" id="dynamicFields"></div>
+
+                <label class="wideField">
+                    <span>Location Notes</span>
+                    <input id="locationNotes" name="locationNotes" placeholder="Nearest road, landmark, or cross street">
+                </label>
+
+                <label class="wideField">
+                    <span>Remarks</span>
+                    <textarea id="remarks" name="remarks" rows="4" placeholder="Brief, factual report details"></textarea>
+                </label>
+
+                <div class="submitRow">
+                    <button class="primaryButton" type="submit">Submit Report</button>
+                    <button class="secondaryButton" id="clearFormButton" type="button">Clear</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="mapPanel" aria-label="Live report map">
+            <div id="map"></div>
+        </section>
+
+        <aside class="reviewPanel" aria-label="Report review">
+            <div class="panelHeader">
+                <h2>Report Queue</h2>
+                <span class="modePill" id="reportCount">0 reports</span>
+            </div>
+            <section class="lightningPanel" aria-label="County lightning indicators">
+                <div class="setupHeader">
+                    <div>
+                        <h3>Lightning</h3>
+                        <p id="lightningMessage">Lightning source not configured.</p>
+                    </div>
+                    <span class="modePill" id="lightningSummary">Standby</span>
+                </div>
+                <div class="lightningGrid" id="lightningGrid"></div>
+            </section>
+            <section class="setupPanel" aria-label="Weather alert focus">
+                <div class="setupHeader">
+                    <div>
+                        <h3>Alert Focus</h3>
+                        <p>Choose states and counties for NWS polygons.</p>
+                    </div>
+                    <span class="modePill" id="alertCount">0 alerts</span>
+                </div>
+
+                <div class="legend">
+                    <span><i class="legendSwatch legendLow"></i>Low</span>
+                    <span><i class="legendSwatch legendModerate"></i>Moderate</span>
+                    <span><i class="legendSwatch legendHigh"></i>High</span>
+                </div>
+
+                <div class="stateList" id="stateList"></div>
+
+                <div class="countyTools">
+                    <input id="countySearch" type="search" placeholder="Search county or code" aria-label="Search counties">
+                    <div class="countyActions">
+                        <button class="secondaryButton" id="selectAllCounties" type="button">All</button>
+                        <button class="secondaryButton" id="clearCounties" type="button">None</button>
+                        <button class="secondaryButton" id="resetCounties" type="button">Reset</button>
+                    </div>
+                </div>
+                <p class="countySelectionSummary" id="countySelectionSummary">Loading counties...</p>
+                <div class="countyList" id="countyList"></div>
+            </section>
+            <div class="filters">
+                <select id="statusFilter" aria-label="Status filter">
+                    <option value="all">All status</option>
+                    <option value="new">New</option>
+                    <option value="reviewed">Reviewed</option>
+                    <option value="sent">Sent to NWS</option>
+                    <option value="invalid">Invalid</option>
+                </select>
+                <select id="typeFilter" aria-label="Event type filter">
+                    <option value="all">All events</option>
+                </select>
+            </div>
+            <div id="reportList" class="reportList"></div>
+        </aside>
+    </main>
+</div>
+
+<template id="reportCardTemplate">
+    <article class="reportCard">
+        <button class="reportSummary" type="button">
+            <span class="eventDot"></span>
+            <span>
+                <strong class="cardTitle"></strong>
+                <small class="cardMeta"></small>
+            </span>
+        </button>
+        <div class="reportDetails"></div>
+        <div class="statusActions">
+            <button type="button" data-status="reviewed">Reviewed</button>
+            <button type="button" data-status="sent">Sent</button>
+            <button type="button" data-status="invalid">Invalid</button>
+        </div>
+    </article>
+</template>
+
+<script src="app.js"></script>
+<script src="alerts.js"></script>
+</body>
+</html>

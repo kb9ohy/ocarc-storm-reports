@@ -1,0 +1,633 @@
+:root {
+    --bg: #eef1f5;
+    --panel: #ffffff;
+    --ink: #16202c;
+    --muted: #647084;
+    --line: #d7dde7;
+    --brand: #10385f;
+    --brandDark: #0b2845;
+    --danger: #b42318;
+    --warn: #b7791f;
+    --ok: #067647;
+    --blue: #2563eb;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+.appShell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+}
+
+.topBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    color: #ffffff;
+    background: var(--brand);
+}
+
+.topBar h1 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.topBar p {
+    margin: 4px 0 0;
+    color: #dbeafe;
+    font-size: 13px;
+}
+
+.topActions,
+.submitRow,
+.statusActions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.workspace {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 380px minmax(0, 1fr) 360px;
+}
+
+.reportPanel,
+.reviewPanel {
+    min-width: 0;
+    overflow: auto;
+    background: var(--panel);
+}
+
+.reportPanel {
+    border-right: 1px solid var(--line);
+    padding: 16px;
+}
+
+.reviewPanel {
+    border-left: 1px solid var(--line);
+    padding: 16px;
+}
+
+.mapPanel {
+    min-width: 0;
+    min-height: 0;
+}
+
+#map {
+    height: 100%;
+    min-height: 520px;
+}
+
+.panelHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.panelHeader h2 {
+    margin: 0;
+    font-size: 17px;
+}
+
+.modePill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    border-radius: 999px;
+    padding: 2px 8px;
+    color: #344054;
+    background: #eef2f6;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.formGrid,
+.locationRow,
+.dynamicFields,
+.filters {
+    display: grid;
+    gap: 10px;
+}
+
+.formGrid {
+    grid-template-columns: 1fr 1fr;
+}
+
+.locationRow {
+    grid-template-columns: 1fr 1fr auto;
+    align-items: end;
+    margin-top: 10px;
+}
+
+label,
+.fieldGroup {
+    display: grid;
+    gap: 6px;
+}
+
+label span,
+.fieldGroup legend {
+    color: #344054;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 9px 10px;
+    color: var(--ink);
+    background: #ffffff;
+}
+
+textarea {
+    resize: vertical;
+}
+
+.wideField,
+.dynamicFields {
+    margin-top: 10px;
+}
+
+.choiceGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.choiceGrid label {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px;
+    background: #fbfcfe;
+    font-size: 13px;
+}
+
+.choiceGrid input {
+    width: auto;
+}
+
+.primaryButton,
+.secondaryButton,
+.statusActions button {
+    min-height: 38px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.primaryButton {
+    color: #ffffff;
+    background: var(--brand);
+    border-color: var(--brand);
+}
+
+.primaryButton:hover,
+.primaryButton:focus {
+    background: var(--brandDark);
+}
+
+.secondaryButton,
+.statusActions button {
+    color: #344054;
+    background: #ffffff;
+}
+
+.secondaryButton:hover,
+.secondaryButton:focus,
+.statusActions button:hover,
+.statusActions button:focus {
+    background: #f8fafc;
+}
+
+.locateButton {
+    white-space: nowrap;
+}
+
+.filters {
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: 12px;
+}
+
+.setupPanel {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+}
+
+.lightningPanel {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+}
+
+.setupHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.setupHeader h3 {
+    margin: 0;
+    font-size: 15px;
+}
+
+.setupHeader p,
+.countySelectionSummary {
+    margin: 3px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.lightningGrid {
+    display: grid;
+    gap: 8px;
+}
+
+.lightningCard {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 46px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px;
+    background: #fbfcfe;
+}
+
+.lightningLed {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #98a2b3;
+    box-shadow: 0 0 0 3px rgba(152, 162, 179, 0.18);
+}
+
+.lightningLed.ok {
+    background: #12b76a;
+    box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.18);
+}
+
+.lightningLed.alert {
+    background: #ef4444;
+    animation: lightningFlash 0.85s steps(2, start) infinite;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22), 0 0 16px rgba(239, 68, 68, 0.7);
+}
+
+.lightningCounty {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.lightningDetail {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.lightningCount {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+@keyframes lightningFlash {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.25;
+    }
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 24px;
+    padding: 2px 7px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: #344054;
+    background: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.legendSwatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.legendLow {
+    background: #2563eb;
+}
+
+.legendModerate {
+    background: #facc15;
+}
+
+.legendHigh {
+    background: #dc2626;
+}
+
+.stateList,
+.countyList {
+    display: grid;
+    gap: 6px;
+}
+
+.stateList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-height: 116px;
+    overflow: auto;
+    padding-right: 2px;
+}
+
+.countyList {
+    max-height: 230px;
+    overflow: auto;
+    padding-right: 2px;
+}
+
+.stateCheck,
+.countyCheck {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    gap: 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 7px 8px;
+    color: #344054;
+    background: #fbfcfe;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: none;
+}
+
+.countyCheckMain {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.stateCheck input,
+.countyCheck input {
+    width: auto;
+    margin: 0;
+}
+
+.countyCheckMain span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.countyCode {
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.countyTools {
+    display: grid;
+    gap: 8px;
+}
+
+.countyActions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.countyActions .secondaryButton {
+    min-height: 32px;
+    padding: 6px 8px;
+    font-size: 12px;
+}
+
+.alertMessage {
+    color: var(--danger);
+}
+
+.highSeverityPolygon {
+    animation: highSeverityPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes highSeverityPulse {
+    0%,
+    100% {
+        stroke-opacity: 0.95;
+        stroke-width: 2;
+    }
+
+    50% {
+        stroke-opacity: 0.45;
+        stroke-width: 3;
+    }
+}
+
+.reportList {
+    display: grid;
+    gap: 10px;
+}
+
+.reportCard {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.reportSummary {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    align-items: start;
+    border: 0;
+    padding: 10px;
+    text-align: left;
+    background: transparent;
+    cursor: pointer;
+}
+
+.eventDot {
+    width: 12px;
+    height: 12px;
+    margin-top: 4px;
+    border-radius: 50%;
+    background: var(--blue);
+}
+
+.cardTitle {
+    display: block;
+    font-size: 14px;
+}
+
+.cardMeta,
+.reportDetails {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.reportDetails {
+    padding: 0 10px 10px 32px;
+}
+
+.statusActions {
+    border-top: 1px solid var(--line);
+    padding: 8px 10px;
+}
+
+.statusActions button {
+    min-height: 30px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+
+.emptyState {
+    padding: 16px;
+    color: var(--muted);
+    text-align: center;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+}
+
+.leaflet-popup-content {
+    min-width: 230px;
+}
+
+.popupTitle {
+    margin-bottom: 6px;
+    font-weight: 700;
+}
+
+.popupRow {
+    margin: 4px 0;
+}
+
+.popupLabel {
+    font-weight: 700;
+}
+
+@media (max-width: 1180px) {
+    .workspace {
+        grid-template-columns: 360px minmax(0, 1fr);
+        grid-template-rows: minmax(460px, 1fr) 360px;
+    }
+
+    .reviewPanel {
+        grid-column: 1 / -1;
+        border-left: 0;
+        border-top: 1px solid var(--line);
+    }
+}
+
+@media (max-width: 760px) {
+    .topBar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .topActions {
+        width: 100%;
+    }
+
+    .topActions button,
+    .submitRow button {
+        flex: 1;
+    }
+
+    .workspace {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 420px auto;
+    }
+
+    .reportPanel,
+    .reviewPanel {
+        border: 0;
+    }
+
+    .mapPanel {
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+    }
+
+    #map {
+        min-height: 420px;
+    }
+
+    .formGrid,
+    .locationRow,
+    .filters {
+        grid-template-columns: 1fr;
+    }
+
+    .stateList {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .highSeverityPolygon,
+    .lightningLed.alert {
+        animation: none;
+    }
+}

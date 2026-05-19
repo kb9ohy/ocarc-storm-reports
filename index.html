@@ -49,6 +49,12 @@ a:hover,
 a:focus {
     background: #0f3154;
 }
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
 </style>
 </head>
 
@@ -56,7 +62,10 @@ a:focus {
 <main>
     <h1>Orange County Amateur Radio Club</h1>
     <p>Storm spotter report dashboard for local severe weather operations.</p>
-    <a href="stormmap.html">Open Storm Map</a>
+    <div class="actions">
+        <a href="net-control/">Open Net Control</a>
+        <a href="stormmap.html">Open Storm Map</a>
+    </div>
 </main>
 </body>
 </html>
